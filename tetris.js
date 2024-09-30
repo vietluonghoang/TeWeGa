@@ -175,15 +175,16 @@ function lockShape() {
                 const posX = currentShape.position.x + x;
                 const posY = currentShape.position.y + y;
                 if (posY >= 0) {
-                    grid[posY][posX] = 1; // Mark the grid as occupied
+                    grid[posY][posX] = 1; // Mark the grid as occupied with locked cells
                 }
             }
         });
     });
-    drawLockedShapes(); // Draw all locked shapes on the grid
     checkForClearRows(); // Check if any rows should be cleared
+    drawLockedShapes(); // Ensure locked shapes are drawn after locking
     spawnShape(); // Spawn the next shape
 }
+
 
 
 // Check for any filled rows and clear them
@@ -193,8 +194,12 @@ function checkForClearRows() {
 
 // Draw the shape on the grid
 function drawShape() {
-    clearGrid();
-    
+    clearGrid(); // Clear the grid first
+
+    // Draw locked shapes
+    drawLockedShapes();
+
+    // Draw current moving shape
     currentShape.shape.forEach((row, y) => {
         row.forEach((cell, x) => {
             if (cell === 1) {
@@ -203,31 +208,34 @@ function drawShape() {
 
                 if (posY >= 0) { // Don't draw outside the visible grid
                     const cellDiv = playboard.children[posY * COLS + posX];
-                    cellDiv.style.backgroundColor = 'blue'; // Color the Tetrimino
+                    cellDiv.style.backgroundColor = 'blue'; // Color for falling shape
                 }
             }
         });
     });
 }
 
+
 function drawLockedShapes() {
     grid.forEach((row, y) => {
         row.forEach((cell, x) => {
-            if (cell === 1) {
+            if (cell === 1) { // Only draw locked cells
                 const cellDiv = playboard.children[y * COLS + x];
-                cellDiv.style.backgroundColor = 'gray'; // Color locked shapes
+                cellDiv.style.backgroundColor = 'gray'; // Locked shape color
             }
         });
     });
 }
 
+
 // Clear the grid for redrawing
 function clearGrid() {
     const cells = playboard.querySelectorAll('div');
     cells.forEach(cell => {
-        cell.style.backgroundColor = 'transparent';
+        cell.style.backgroundColor = 'transparent'; // Clear only the visual grid
     });
 }
+
 
 // Show game over popup (not used yet)
 function showGameOverPopup() {
