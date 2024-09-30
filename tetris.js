@@ -1,10 +1,34 @@
 // tetris.js
 const canvas = document.getElementById('tetrisCanvas');
 const ctx = canvas.getContext('2d');
+const infoFrame = document.getElementById('infoFrame');
 
 const ROWS = 20;
 const COLS = 10;
 const BLOCK_SIZE = 30;
+const GRID_BORDER_WIDTH = 3;
+const INFO_FRAME_BORDER_WIDTH = 2;
+
+// Calculate new canvas size
+const GRID_WIDTH = COLS * BLOCK_SIZE;
+const GRID_HEIGHT = ROWS * BLOCK_SIZE;
+const INFO_FRAME_WIDTH = 5 * BLOCK_SIZE;
+const INFO_FRAME_HEIGHT = 4 * BLOCK_SIZE;
+const SPACING = 20;
+
+// Set canvas size
+canvas.width = GRID_WIDTH + INFO_FRAME_WIDTH + SPACING + GRID_BORDER_WIDTH;
+canvas.height = Math.max(GRID_HEIGHT, INFO_FRAME_HEIGHT) + GRID_BORDER_WIDTH;
+
+// Set info frame size and position
+infoFrame.style.width = `${INFO_FRAME_WIDTH}px`;
+infoFrame.style.height = `${INFO_FRAME_HEIGHT}px`;
+infoFrame.style.position = 'absolute';
+infoFrame.style.left = `${GRID_WIDTH + SPACING + GRID_BORDER_WIDTH}px`;
+infoFrame.style.top = '0px';
+infoFrame.style.border = `${INFO_FRAME_BORDER_WIDTH}px solid gray`;
+infoFrame.style.backgroundColor = '#f0f0f0';  // Light gray background
+infoFrame.style.boxSizing = 'border-box';  // Include border in width/height calculation
 
 const SHAPES = [
     [[1, 1, 1, 1]],
@@ -22,6 +46,9 @@ let board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
 let currentPiece = null;
 let score = 0;
 
+const SHAPE_BORDER_COLOR = 'white';
+const GRID_BORDER_COLOR = '#d0d0d0';
+
 function newPiece() {
     const shapeIndex = Math.floor(Math.random() * SHAPES.length);
     const shape = SHAPES[shapeIndex];
@@ -34,60 +61,78 @@ function newPiece() {
     };
 }
 
-function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawBoard();
-    drawPiece();
-    drawScore();
-}
-
 function drawBoard() {
-    ctx.fillStyle = '#f0f0f0';
-    ctx.fillRect(0, 0, COLS * BLOCK_SIZE, ROWS * BLOCK_SIZE);
+    // Clear the entire canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    ctx.strokeStyle = '#ccc';
-    for (let i = 0; i <= ROWS; i++) {
-        ctx.beginPath();
-        ctx.moveTo(0, i * BLOCK_SIZE);
-        ctx.lineTo(COLS * BLOCK_SIZE, i * BLOCK_SIZE);
-        ctx.stroke();
-    }
-    for (let j = 0; j <= COLS; j++) {
-        ctx.beginPath();
-        ctx.moveTo(j * BLOCK_SIZE, 0);
-        ctx.lineTo(j * BLOCK_SIZE, ROWS * BLOCK_SIZE);
-        ctx.stroke();
-    }
+    // Draw the gameplay grid background
+    ctx.fillStyle = '#ffffff';  // White background for the grid
+    ctx.fillRect(0, 0, GRID_WIDTH, GRID_HEIGHT);
 
+    // Draw grid cells
+    ctx.lineWidth = 1;
     board.forEach((row, y) => {
         row.forEach((value, x) => {
+            const drawX = x * BLOCK_SIZE;
+            const drawY = y * BLOCK_SIZE;
+
             if (value !== 0) {
+                // Fill colored blocks
                 ctx.fillStyle = COLORS[value - 1];
-                ctx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
-                ctx.strokeStyle = 'white';
-                ctx.strokeRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                ctx.fillRect(drawX, drawY, BLOCK_SIZE, BLOCK_SIZE);
+                
+                // Draw shape border
+                ctx.strokeStyle = SHAPE_BORDER_COLOR;
+                ctx.strokeRect(drawX, drawY, BLOCK_SIZE, BLOCK_SIZE);
+            } else {
+                // Draw grid border for empty cells
+                ctx.strokeStyle = GRID_BORDER_COLOR;
+                ctx.strokeRect(drawX, drawY, BLOCK_SIZE, BLOCK_SIZE);
             }
         });
     });
+
+    // Draw the gameplay grid border
+    ctx.strokeStyle = 'gray';
+    ctx.lineWidth = GRID_BORDER_WIDTH;
+    
+    // Adjust the border drawing to ensure equal thickness
+    const offset = GRID_BORDER_WIDTH / 2;
+    ctx.strokeRect(
+        offset, 
+        offset, 
+        GRID_WIDTH - GRID_BORDER_WIDTH + offset * 2, 
+        GRID_HEIGHT - GRID_BORDER_WIDTH + offset * 2
+    );
 }
 
 function drawPiece() {
     currentPiece.shape.forEach((row, y) => {
         row.forEach((value, x) => {
             if (value) {
+                const drawX = (currentPiece.x + x) * BLOCK_SIZE;
+                const drawY = (currentPiece.y + y) * BLOCK_SIZE;
+
+                // Fill the shape
                 ctx.fillStyle = currentPiece.color;
-                ctx.fillRect((currentPiece.x + x) * BLOCK_SIZE, (currentPiece.y + y) * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
-                ctx.strokeStyle = 'white';
-                ctx.strokeRect((currentPiece.x + x) * BLOCK_SIZE, (currentPiece.y + y) * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                ctx.fillRect(drawX, drawY, BLOCK_SIZE, BLOCK_SIZE);
+
+                // Draw shape border
+                ctx.strokeStyle = SHAPE_BORDER_COLOR;
+                ctx.lineWidth = 1;
+                ctx.strokeRect(drawX, drawY, BLOCK_SIZE, BLOCK_SIZE);
             }
         });
     });
 }
 
 function drawScore() {
-    ctx.fillStyle = '#000';
-    ctx.font = '20px Arial';
-    ctx.fillText(`Score: ${score}`, 10, 25);
+    infoFrame.innerHTML = `<p style="margin: 10px;">Score: ${score}</p>`;
+}
+
+function updateCanvas() {
+    drawBoard();
+    drawPiece();
 }
 
 function moveDown() {
@@ -106,7 +151,7 @@ function moveDown() {
             score = 0;
         }
     }
-    draw(); // Ensure the game state is always drawn after a move
+    updateCanvas();
 }
 
 function moveLeft() {
@@ -114,7 +159,7 @@ function moveLeft() {
     if (collision()) {
         currentPiece.x++;
     }
-    draw();
+    updateCanvas();
 }
 
 function moveRight() {
@@ -122,7 +167,7 @@ function moveRight() {
     if (collision()) {
         currentPiece.x--;
     }
-    draw();
+    updateCanvas();
 }
 
 function rotate() {
@@ -176,7 +221,7 @@ function rotate() {
         currentPiece.y = prevY;
     }
 
-    draw();
+    updateCanvas();
 }
 
 function collision() {
@@ -238,7 +283,8 @@ function update(time = 0) {
         dropCounter = 0;
     }
 
-    draw();
+    updateCanvas();
+    drawScore();
     requestAnimationFrame(update);
 }
 
