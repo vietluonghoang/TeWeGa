@@ -1,3 +1,4 @@
+// tetris.js
 const canvas = document.getElementById('tetrisCanvas');
 const ctx = canvas.getContext('2d');
 
@@ -28,7 +29,8 @@ function newPiece() {
         shape: shape,
         color: COLORS[shapeIndex],
         x: Math.floor(COLS / 2) - Math.floor(shape[0].length / 2),
-        y: 0
+        y: 0,
+        shapeIndex: shapeIndex // Store the original shape index
     };
 }
 
@@ -40,12 +42,29 @@ function draw() {
 }
 
 function drawBoard() {
+    ctx.fillStyle = '#f0f0f0';
+    ctx.fillRect(0, 0, COLS * BLOCK_SIZE, ROWS * BLOCK_SIZE);
+
+    ctx.strokeStyle = '#ccc';
+    for (let i = 0; i <= ROWS; i++) {
+        ctx.beginPath();
+        ctx.moveTo(0, i * BLOCK_SIZE);
+        ctx.lineTo(COLS * BLOCK_SIZE, i * BLOCK_SIZE);
+        ctx.stroke();
+    }
+    for (let j = 0; j <= COLS; j++) {
+        ctx.beginPath();
+        ctx.moveTo(j * BLOCK_SIZE, 0);
+        ctx.lineTo(j * BLOCK_SIZE, ROWS * BLOCK_SIZE);
+        ctx.stroke();
+    }
+
     board.forEach((row, y) => {
         row.forEach((value, x) => {
-            if (value) {
+            if (value !== 0) {
                 ctx.fillStyle = COLORS[value - 1];
                 ctx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
-                ctx.strokeStyle = '#fff';
+                ctx.strokeStyle = 'white';
                 ctx.strokeRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
             }
         });
@@ -58,7 +77,7 @@ function drawPiece() {
             if (value) {
                 ctx.fillStyle = currentPiece.color;
                 ctx.fillRect((currentPiece.x + x) * BLOCK_SIZE, (currentPiece.y + y) * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
-                ctx.strokeStyle = '#fff';
+                ctx.strokeStyle = 'white';
                 ctx.strokeRect((currentPiece.x + x) * BLOCK_SIZE, (currentPiece.y + y) * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
             }
         });
@@ -74,15 +93,20 @@ function drawScore() {
 function moveDown() {
     currentPiece.y++;
     if (collision()) {
+        console.log("Collision detected");
         currentPiece.y--;
         merge();
         removeRows();
         currentPiece = newPiece();
+        console.log("New piece created:", JSON.stringify(currentPiece));
         if (collision()) {
+            console.log("Game over condition met");
+            alert("Game Over! Your score: " + score);
             board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
             score = 0;
         }
     }
+    draw(); // Ensure the game state is always drawn after a move
 }
 
 function moveLeft() {
@@ -90,6 +114,7 @@ function moveLeft() {
     if (collision()) {
         currentPiece.x++;
     }
+    draw();
 }
 
 function moveRight() {
@@ -97,6 +122,7 @@ function moveRight() {
     if (collision()) {
         currentPiece.x--;
     }
+    draw();
 }
 
 function rotate() {
@@ -108,6 +134,7 @@ function rotate() {
     if (collision()) {
         currentPiece.shape = prevShape;
     }
+    draw();
 }
 
 function collision() {
@@ -124,45 +151,77 @@ function collision() {
 }
 
 function merge() {
+    console.log("Merging piece:", JSON.stringify(currentPiece));
     currentPiece.shape.forEach((row, y) => {
         row.forEach((value, x) => {
             if (value) {
-                board[currentPiece.y + y][currentPiece.x + x] = SHAPES.indexOf(currentPiece.shape) + 1;
+                const boardY = currentPiece.y + y;
+                const boardX = currentPiece.x + x;
+                if (boardY >= 0 && boardY < ROWS && boardX >= 0 && boardX < COLS) {
+                    board[boardY][boardX] = currentPiece.shapeIndex + 1;
+                    console.log(`Merged at: (${boardX}, ${boardY}), value: ${currentPiece.shapeIndex + 1}`);
+                } else {
+                    console.warn(`Attempted to merge outside board: (${boardX}, ${boardY})`);
+                }
             }
         });
     });
+    console.log("Board state after merge:", JSON.stringify(board));
 }
 
 function removeRows() {
     let rowsCleared = 0;
-    board = board.filter(row => {
-        if (row.every(cell => cell !== 0)) {
+    for (let y = ROWS - 1; y >= 0; y--) {
+        if (board[y].every(cell => cell !== 0)) {
+            board.splice(y, 1);
+            board.unshift(Array(COLS).fill(0));
             rowsCleared++;
-            return false;
+            y++; // Check the new row that has dropped down
         }
-        return true;
-    });
-    while (rowsCleared > 0) {
-        board.unshift(Array(COLS).fill(0));
-        rowsCleared--;
     }
     score += rowsCleared * 100;
+    console.log("Rows cleared:", rowsCleared, "New score:", score);
+}
+
+let dropCounter = 0;
+let lastTime = 0;
+
+function update(time = 0) {
+    const deltaTime = time - lastTime;
+    lastTime = time;
+
+    dropCounter += deltaTime;
+    if (dropCounter > 1000) {
+        moveDown();
+        dropCounter = 0;
+    }
+
+    draw();
+    requestAnimationFrame(update);
 }
 
 document.addEventListener('keydown', event => {
-    switch(event.keyCode) {
-        case 37: moveLeft(); break;
-        case 39: moveRight(); break;
-        case 40: moveDown(); break;
-        case 38: rotate(); break;
+    switch(event.key) {
+        case 'ArrowLeft': moveLeft(); break;
+        case 'ArrowRight': moveRight(); break;
+        case 'ArrowDown': moveDown(); break;
+        case 'ArrowUp': rotate(); break;
     }
-    draw();
 });
 
-currentPiece = newPiece();
-setInterval(() => {
-    moveDown();
-    draw();
-}, 500);
+// Debug function to log the current state
+function logState() {
+    console.log("Current Piece:", currentPiece);
+    console.log("Board State:", board);
+}
 
-draw();
+// Add a debug key (e.g., 'D' key)
+document.addEventListener('keydown', event => {
+    if (event.key === 'd' || event.key === 'D') {
+        logState();
+    }
+});
+
+// Initialize the game
+currentPiece = newPiece();
+update(); // Start the game loop
