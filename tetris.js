@@ -49,6 +49,11 @@ let score = 0;
 const SHAPE_BORDER_COLOR = 'white';
 const GRID_BORDER_COLOR = '#d0d0d0';
 
+let lockDelay = 200; // 0.2 seconds
+let lockTimer = 0;
+let isLocking = false;
+let flashCounter = 0;
+
 function newPiece() {
     const shapeIndex = Math.floor(Math.random() * SHAPES.length);
     const shape = SHAPES[shapeIndex];
@@ -115,7 +120,11 @@ function drawPiece() {
 
                 // Only draw if the piece is within or entering the grid
                 if (drawY >= 0) {
-                    ctx.fillStyle = currentPiece.color;
+                    if (isLocking && Math.floor(flashCounter / 33) % 2 === 0) {
+                        ctx.fillStyle = 'white'; // Flash white
+                    } else {
+                        ctx.fillStyle = currentPiece.color;
+                    }
                     ctx.fillRect(drawX, drawY, BLOCK_SIZE, BLOCK_SIZE);
 
                     ctx.strokeStyle = SHAPE_BORDER_COLOR;
@@ -140,17 +149,13 @@ function moveDown() {
     currentPiece.y++;
     if (collision()) {
         currentPiece.y--;
-        if (currentPiece.y < 0) {
-            console.log("Game over condition met");
-            alert("Game Over! Your score: " + score);
-            board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
-            score = 0;
-            currentPiece = newPiece();
-        } else {
-            merge();
-            removeRows();
-            currentPiece = newPiece();
+        if (!isLocking) {
+            isLocking = true;
+            lockTimer = 0;
         }
+    } else {
+        isLocking = false;
+        lockTimer = 0;
     }
     updateCanvas();
 }
@@ -282,6 +287,27 @@ function update(time = 0) {
     if (dropCounter > 1000) {
         moveDown();
         dropCounter = 0;
+    }
+
+    if (isLocking) {
+        lockTimer += deltaTime;
+        flashCounter += deltaTime;
+        if (lockTimer >= lockDelay) {
+            if (currentPiece.y < 0) {
+                console.log("Game over condition met");
+                alert("Game Over! Your score: " + score);
+                board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
+                score = 0;
+                currentPiece = newPiece();
+            } else {
+                merge();
+                removeRows();
+                currentPiece = newPiece();
+            }
+            isLocking = false;
+            lockTimer = 0;
+            flashCounter = 0;
+        }
     }
 
     updateCanvas();
