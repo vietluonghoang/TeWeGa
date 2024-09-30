@@ -56,7 +56,7 @@ function newPiece() {
         shape: shape,
         color: COLORS[shapeIndex],
         x: Math.floor(COLS / 2) - Math.floor(shape[0].length / 2),
-        y: 0,
+        y: -shape.length, // Start above the grid
         shapeIndex: shapeIndex
     };
 }
@@ -113,14 +113,15 @@ function drawPiece() {
                 const drawX = (currentPiece.x + x) * BLOCK_SIZE;
                 const drawY = (currentPiece.y + y) * BLOCK_SIZE;
 
-                // Fill the shape
-                ctx.fillStyle = currentPiece.color;
-                ctx.fillRect(drawX, drawY, BLOCK_SIZE, BLOCK_SIZE);
+                // Only draw if the piece is within or entering the grid
+                if (drawY >= 0) {
+                    ctx.fillStyle = currentPiece.color;
+                    ctx.fillRect(drawX, drawY, BLOCK_SIZE, BLOCK_SIZE);
 
-                // Draw shape border
-                ctx.strokeStyle = SHAPE_BORDER_COLOR;
-                ctx.lineWidth = 1;
-                ctx.strokeRect(drawX, drawY, BLOCK_SIZE, BLOCK_SIZE);
+                    ctx.strokeStyle = SHAPE_BORDER_COLOR;
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(drawX, drawY, BLOCK_SIZE, BLOCK_SIZE);
+                }
             }
         });
     });
@@ -138,17 +139,17 @@ function updateCanvas() {
 function moveDown() {
     currentPiece.y++;
     if (collision()) {
-        console.log("Collision detected");
         currentPiece.y--;
-        merge();
-        removeRows();
-        currentPiece = newPiece();
-        console.log("New piece created:", JSON.stringify(currentPiece));
-        if (collision()) {
+        if (currentPiece.y < 0) {
             console.log("Game over condition met");
             alert("Game Over! Your score: " + score);
             board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
             score = 0;
+            currentPiece = newPiece();
+        } else {
+            merge();
+            removeRows();
+            currentPiece = newPiece();
         }
     }
     updateCanvas();
