@@ -30,7 +30,7 @@ function newPiece() {
         color: COLORS[shapeIndex],
         x: Math.floor(COLS / 2) - Math.floor(shape[0].length / 2),
         y: 0,
-        shapeIndex: shapeIndex // Store the original shape index
+        shapeIndex: shapeIndex
     };
 }
 
@@ -130,10 +130,52 @@ function rotate() {
         currentPiece.shape.map(row => row[i]).reverse()
     );
     const prevShape = currentPiece.shape;
+    const prevX = currentPiece.x;
+    const prevY = currentPiece.y;
+
     currentPiece.shape = rotated;
-    if (collision()) {
-        currentPiece.shape = prevShape;
+
+    // Basic wall kick system
+    const kicks = [
+        [0, 0],   // No kick
+        [-1, 0],  // Left
+        [1, 0],   // Right
+        [0, -1],  // Up
+        [-1, -1], // Up-left
+        [1, -1],  // Up-right
+        [0, 1],   // Down
+        [-1, 1],  // Down-left
+        [1, 1]    // Down-right
+    ];
+
+    // Additional kicks for I shape
+    const iKicks = [
+        [-2, 0], [2, 0],  // Further left and right
+        [0, -2], [0, 2],  // Further up and down
+        [-3, 0], [3, 0],  // Even further left and right
+        [0, -3], [0, 3]   // Even further up and down
+    ];
+
+    const allKicks = currentPiece.shapeIndex === 0 ? [...kicks, ...iKicks] : kicks;
+
+    let kicked = false;
+    for (let [kickX, kickY] of allKicks) {
+        currentPiece.x += kickX;
+        currentPiece.y += kickY;
+        if (!collision()) {
+            kicked = true;
+            break;
+        }
+        currentPiece.x -= kickX;
+        currentPiece.y -= kickY;
     }
+
+    if (!kicked) {
+        currentPiece.shape = prevShape;
+        currentPiece.x = prevX;
+        currentPiece.y = prevY;
+    }
+
     draw();
 }
 
