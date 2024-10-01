@@ -3,14 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Tetris</title>
+    <title>Tetris Game</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="gameContainer">
         <canvas id="tetrisCanvas"></canvas>
-        <div id="infoFrame"></div>
-      </div>
+        <div id="sidePanel">
+            <div id="infoFrame"></div>
+            <div class="pieceDisplay">
+                <span class="pieceLabel">Next</span>
+                <canvas id="nextPieceCanvas"></canvas>
+            </div>
+            <div class="pieceDisplay">
+                <span class="pieceLabel">Hold</span>
+                <canvas id="heldPieceCanvas"></canvas>
+            </div>
+        </div>
+    </div>
     <script src="tetris.js"></script>
 </body>
 </html>

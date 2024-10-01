@@ -12,23 +12,18 @@ const INFO_FRAME_BORDER_WIDTH = 2;
 // Calculate new canvas size
 const GRID_WIDTH = COLS * BLOCK_SIZE;
 const GRID_HEIGHT = ROWS * BLOCK_SIZE;
-const INFO_FRAME_WIDTH = 5 * BLOCK_SIZE;
-const INFO_FRAME_HEIGHT = 4 * BLOCK_SIZE;
-const SPACING = 20;
 
-// Set canvas size
-canvas.width = GRID_WIDTH + INFO_FRAME_WIDTH + SPACING + GRID_BORDER_WIDTH;
-canvas.height = Math.max(GRID_HEIGHT, INFO_FRAME_HEIGHT) + GRID_BORDER_WIDTH;
+// Set main canvas size
+canvas.width = GRID_WIDTH;
+canvas.height = GRID_HEIGHT;
 
-// Set info frame size and position
-infoFrame.style.width = `${INFO_FRAME_WIDTH}px`;
-infoFrame.style.height = `${INFO_FRAME_HEIGHT}px`;
-infoFrame.style.position = 'absolute';
-infoFrame.style.left = `${GRID_WIDTH + SPACING + GRID_BORDER_WIDTH}px`;
-infoFrame.style.top = '0px';
-infoFrame.style.border = `${INFO_FRAME_BORDER_WIDTH}px solid gray`;
-infoFrame.style.backgroundColor = '#f0f0f0';  // Light gray background
-infoFrame.style.boxSizing = 'border-box';  // Include border in width/height calculation
+// Set next piece and held piece canvas sizes
+const nextPieceCanvas = document.getElementById('nextPieceCanvas');
+const heldPieceCanvas = document.getElementById('heldPieceCanvas');
+nextPieceCanvas.width = 150;
+nextPieceCanvas.height = 150;
+heldPieceCanvas.width = 150;
+heldPieceCanvas.height = 150;
 
 const SHAPES = [
     [[1, 1, 1, 1]],
@@ -45,6 +40,7 @@ const COLORS = ['cyan', 'yellow', 'purple', 'green', 'red', 'blue', 'orange'];
 let board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
 let currentPiece = null;
 let score = 0;
+let linesCleared = 0;  // New variable to track total lines cleared
 
 const SHAPE_BORDER_COLOR = 'white';
 const GRID_BORDER_COLOR = '#d0d0d0';
@@ -59,16 +55,102 @@ const ROW_CLEAR_DELAY = 200; // 500ms total delay before clearing rows
 const FLASH_COUNT = 5; // Number of times to flash
 let flashWhite = false; // New variable to track flash state
 
+const DIFFICULTY_LEVELS = {
+    EASY: { speed: 1000, score_multiplier: 1 },
+    MEDIUM: { speed: 750, score_multiplier: 1.5 },
+    HARD: { speed: 500, score_multiplier: 2 }
+};
+
+let currentDifficulty = DIFFICULTY_LEVELS.EASY;
+let nextPiece = null;
+let heldPiece = null;
+let canHold = true;
+
+// Modify the newPiece function
 function newPiece() {
+    if (!nextPiece) {
+        nextPiece = generatePiece();
+    }
+    const piece = nextPiece;
+    nextPiece = generatePiece();
+    return piece;
+}
+
+function generatePiece() {
     const shapeIndex = Math.floor(Math.random() * SHAPES.length);
     const shape = SHAPES[shapeIndex];
     return {
         shape: shape,
         color: COLORS[shapeIndex],
         x: Math.floor(COLS / 2) - Math.floor(shape[0].length / 2),
-        y: -shape.length, // Start above the grid
+        y: -shape.length,
         shapeIndex: shapeIndex
     };
+}
+
+// Add these new functions
+function drawNextPiece() {
+    const nextPieceCanvas = document.getElementById('nextPieceCanvas');
+    const nextCtx = nextPieceCanvas.getContext('2d');
+    nextCtx.clearRect(0, 0, nextPieceCanvas.width, nextPieceCanvas.height);
+
+    // Center the piece in the canvas
+    const offsetX = (nextPieceCanvas.width - nextPiece.shape[0].length * BLOCK_SIZE) / 2;
+    const offsetY = (nextPieceCanvas.height - nextPiece.shape.length * BLOCK_SIZE) / 2;
+
+    nextPiece.shape.forEach((row, y) => {
+        row.forEach((value, x) => {
+            if (value) {
+                nextCtx.fillStyle = nextPiece.color;
+                nextCtx.fillRect(offsetX + x * BLOCK_SIZE, offsetY + y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                nextCtx.strokeStyle = SHAPE_BORDER_COLOR;
+                nextCtx.strokeRect(offsetX + x * BLOCK_SIZE, offsetY + y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+            }
+        });
+    });
+}
+
+function drawHeldPiece() {
+    const heldPieceCanvas = document.getElementById('heldPieceCanvas');
+    const heldCtx = heldPieceCanvas.getContext('2d');
+    heldCtx.clearRect(0, 0, heldPieceCanvas.width, heldPieceCanvas.height);
+
+    if (heldPiece) {
+        // Center the piece in the canvas
+        const offsetX = (heldPieceCanvas.width - heldPiece.shape[0].length * BLOCK_SIZE) / 2;
+        const offsetY = (heldPieceCanvas.height - heldPiece.shape.length * BLOCK_SIZE) / 2;
+
+        heldPiece.shape.forEach((row, y) => {
+            row.forEach((value, x) => {
+                if (value) {
+                    heldCtx.fillStyle = heldPiece.color;
+                    heldCtx.fillRect(offsetX + x * BLOCK_SIZE, offsetY + y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                    heldCtx.strokeStyle = SHAPE_BORDER_COLOR;
+                    heldCtx.strokeRect(offsetX + x * BLOCK_SIZE, offsetY + y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                }
+            });
+        });
+    }
+}
+
+function holdPiece() {
+    if (canHold) {
+        if (heldPiece === null) {
+            heldPiece = { ...currentPiece };
+            currentPiece = newPiece();
+        } else {
+            const temp = { ...currentPiece };
+            currentPiece = { ...heldPiece, x: Math.floor(COLS / 2) - Math.floor(heldPiece.shape[0].length / 2), y: -heldPiece.shape.length };
+            heldPiece = temp;
+        }
+        canHold = false;
+        drawHeldPiece();
+    }
+}
+
+function changeDifficulty(level) {
+    currentDifficulty = DIFFICULTY_LEVELS[level];
+    // You might want to adjust other game parameters here based on difficulty
 }
 
 function drawBoard() {
@@ -150,7 +232,10 @@ function drawPiece() {
 }
 
 function drawScore() {
-    infoFrame.innerHTML = `<p style="margin: 10px;">Score: ${score}</p>`;
+    infoFrame.innerHTML = `
+        <p style="margin: 10px;">Score: ${score}</p>
+        <p style="margin: 10px;">Lines: ${linesCleared}</p>
+    `;
 }
 
 function updateCanvas() {
@@ -317,7 +402,8 @@ function clearCompletedRows() {
         board.unshift(Array(COLS).fill(0));
         console.log("+++Cleared row: " + y);
     });
-    score += completedRows.length * 100;
+    score += completedRows.length * 100 * currentDifficulty.score_multiplier;
+    linesCleared += completedRows.length;  // Update total lines cleared
     completedRows = [];
     drawScore();
     updateCanvas();
@@ -331,7 +417,7 @@ function update(time = 0) {
     lastTime = time;
 
     dropCounter += deltaTime;
-    if (dropCounter > 1000) {
+    if (dropCounter > currentDifficulty.speed) {
         moveDown();
         dropCounter = 0;
     }
@@ -342,9 +428,10 @@ function update(time = 0) {
         if (lockTimer >= lockDelay) {
             if (currentPiece.y < 0) {
                 console.log("Game over condition met");
-                alert("Game Over! Your score: " + score);
+                alert(`Game Over! Your score: ${score}\nLines cleared: ${linesCleared}`);
                 board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
                 score = 0;
+                linesCleared = 0;  // Reset lines cleared
                 currentPiece = newPiece();
             } else {
                 merge();
@@ -358,6 +445,8 @@ function update(time = 0) {
 
     updateCanvas();
     drawScore();
+    drawNextPiece();
+    drawHeldPiece();
     requestAnimationFrame(update);
 }
 
@@ -367,6 +456,19 @@ document.addEventListener('keydown', event => {
         case 'ArrowRight': moveRight(); break;
         case 'ArrowDown': moveDown(); break;
         case 'ArrowUp': rotate(); break;
+        case 'c':
+        case 'C':
+            holdPiece();
+            break;
+        case '1':
+            changeDifficulty('EASY');
+            break;
+        case '2':
+            changeDifficulty('MEDIUM');
+            break;
+        case '3':
+            changeDifficulty('HARD');
+            break;
     }
 });
 
@@ -385,4 +487,5 @@ document.addEventListener('keydown', event => {
 
 // Initialize the game
 currentPiece = newPiece();
+nextPiece = generatePiece();
 update(); // Start the game loop
