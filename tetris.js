@@ -57,8 +57,7 @@ let flashCounter = 0;
 let completedRows = [];
 const ROW_CLEAR_DELAY = 200; // 500ms total delay before clearing rows
 const FLASH_COUNT = 5; // Number of times to flash
-const FLASH_COLORS = ['red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'violet'];
-let flashIndex = 0;
+let flashWhite = false; // New variable to track flash state
 
 function newPiece() {
     const shapeIndex = Math.floor(Math.random() * SHAPES.length);
@@ -73,6 +72,7 @@ function newPiece() {
 }
 
 function drawBoard() {
+    canvas.focus();
     // Clear the entire canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -88,7 +88,11 @@ function drawBoard() {
             const drawY = y * BLOCK_SIZE;
 
             if (value === 'flash') {
-                ctx.fillStyle = FLASH_COLORS[flashIndex];  // Rainbow flash for completed rows
+                if (flashWhite) {
+                    ctx.fillStyle = 'white';
+                } else {
+                    ctx.fillStyle = COLORS[board[y][x] - 1];
+                }
                 ctx.fillRect(drawX, drawY, BLOCK_SIZE, BLOCK_SIZE);
             } else if (value !== 0) {
                 // Fill colored blocks
@@ -275,12 +279,12 @@ function merge() {
 
 function removeRows() {
     completedRows = [];
-    for (let y = ROWS - 1; y >= 0; y--) {
+    for (let y = 0; y <= ROWS - 1; y++) {
         if (board[y].every(cell => cell !== 0)) {
             completedRows.push(y);
         }
     }
-    
+    console.log("+++Completed rows: " + JSON.stringify(completedRows));
     if (completedRows.length > 0) {
         flashCompletedRows(0);
     }
@@ -290,13 +294,16 @@ function flashCompletedRows(currentFlash) {
     if (currentFlash < FLASH_COUNT) {
         completedRows.forEach(y => {
             for (let x = 0; x < COLS; x++) {
-                board[y][x] = 'flash';
+                if (board[y][x] !== 0) {
+                    board[y][x] = 'flash';
+                }
             }
         });
         updateCanvas();
         
+        flashWhite = !flashWhite; // Toggle flash state
+        
         setTimeout(() => {
-            flashIndex = (flashIndex + 1) % FLASH_COLORS.length;
             flashCompletedRows(currentFlash + 1);
         }, ROW_CLEAR_DELAY / (FLASH_COUNT * 2));
     } else {
@@ -308,6 +315,7 @@ function clearCompletedRows() {
     completedRows.forEach(y => {
         board.splice(y, 1);
         board.unshift(Array(COLS).fill(0));
+        console.log("+++Cleared row: " + y);
     });
     score += completedRows.length * 100;
     completedRows = [];
