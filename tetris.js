@@ -54,6 +54,12 @@ let lockTimer = 0;
 let isLocking = false;
 let flashCounter = 0;
 
+let completedRows = [];
+const ROW_CLEAR_DELAY = 200; // 500ms total delay before clearing rows
+const FLASH_COUNT = 5; // Number of times to flash
+const FLASH_COLORS = ['red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'violet'];
+let flashIndex = 0;
+
 function newPiece() {
     const shapeIndex = Math.floor(Math.random() * SHAPES.length);
     const shape = SHAPES[shapeIndex];
@@ -81,7 +87,10 @@ function drawBoard() {
             const drawX = x * BLOCK_SIZE;
             const drawY = y * BLOCK_SIZE;
 
-            if (value !== 0) {
+            if (value === 'flash') {
+                ctx.fillStyle = FLASH_COLORS[flashIndex];  // Rainbow flash for completed rows
+                ctx.fillRect(drawX, drawY, BLOCK_SIZE, BLOCK_SIZE);
+            } else if (value !== 0) {
                 // Fill colored blocks
                 ctx.fillStyle = COLORS[value - 1];
                 ctx.fillRect(drawX, drawY, BLOCK_SIZE, BLOCK_SIZE);
@@ -260,20 +269,50 @@ function merge() {
         });
     });
     console.log("Board state after merge:", JSON.stringify(board));
+
+    removeRows();  // This will now set up the delayed row removal
 }
 
 function removeRows() {
-    let rowsCleared = 0;
+    completedRows = [];
     for (let y = ROWS - 1; y >= 0; y--) {
         if (board[y].every(cell => cell !== 0)) {
-            board.splice(y, 1);
-            board.unshift(Array(COLS).fill(0));
-            rowsCleared++;
-            y++; // Check the new row that has dropped down
+            completedRows.push(y);
         }
     }
-    score += rowsCleared * 100;
-    console.log("Rows cleared:", rowsCleared, "New score:", score);
+    
+    if (completedRows.length > 0) {
+        flashCompletedRows(0);
+    }
+}
+
+function flashCompletedRows(currentFlash) {
+    if (currentFlash < FLASH_COUNT) {
+        completedRows.forEach(y => {
+            for (let x = 0; x < COLS; x++) {
+                board[y][x] = 'flash';
+            }
+        });
+        updateCanvas();
+        
+        setTimeout(() => {
+            flashIndex = (flashIndex + 1) % FLASH_COLORS.length;
+            flashCompletedRows(currentFlash + 1);
+        }, ROW_CLEAR_DELAY / (FLASH_COUNT * 2));
+    } else {
+        clearCompletedRows();
+    }
+}
+
+function clearCompletedRows() {
+    completedRows.forEach(y => {
+        board.splice(y, 1);
+        board.unshift(Array(COLS).fill(0));
+    });
+    score += completedRows.length * 100;
+    completedRows = [];
+    drawScore();
+    updateCanvas();
 }
 
 let dropCounter = 0;
@@ -301,7 +340,6 @@ function update(time = 0) {
                 currentPiece = newPiece();
             } else {
                 merge();
-                removeRows();
                 currentPiece = newPiece();
             }
             isLocking = false;
