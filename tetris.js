@@ -21,9 +21,9 @@ canvas.height = GRID_HEIGHT;
 const nextPieceCanvas = document.getElementById('nextPieceCanvas');
 const heldPieceCanvas = document.getElementById('heldPieceCanvas');
 nextPieceCanvas.width = 150;
-nextPieceCanvas.height = 90; // Reduced from 120 to 90
+nextPieceCanvas.height = 70; // Reduced from 120 to 90
 heldPieceCanvas.width = 150;
-heldPieceCanvas.height = 90; // Reduced from 120 to 90
+heldPieceCanvas.height = 70; // Reduced from 120 to 90
 
 const SHAPES = [
     [[0,0,0,0], [1,1,1,1], [0,0,0,0], [0,0,0,0]], // I
@@ -124,19 +124,34 @@ function drawPieceInCanvas(piece, canvas) {
     
     if (piece) {
         const pieceSize = Math.floor(BLOCK_SIZE * 0.75); // 75% of the main grid block size
-        const maxPieceWidth = piece.shape[0].length * pieceSize;
-        const maxPieceHeight = piece.shape.length * pieceSize;
+        const maxPieceWidth = 4 * pieceSize;
+        const maxPieceHeight = 4 * pieceSize;
         
-        const offsetX = Math.floor((canvas.width - maxPieceWidth) / 2);
-        const offsetY = Math.floor((canvas.height - maxPieceHeight) / 2);
+        // Calculate the actual piece dimensions
+        const pieceWidth = piece.shape[0].length * pieceSize;
+        const pieceHeight = piece.shape.length * pieceSize;
+        
+        // Center the piece both horizontally and vertically
+        const offsetX = Math.floor((canvas.width - pieceWidth) / 2);
+        const offsetY = Math.floor((canvas.height - pieceHeight) / 2);
 
         piece.shape.forEach((row, y) => {
             row.forEach((value, x) => {
                 if (value !== 0) {
                     ctx.fillStyle = COLORS[piece.shapeIndex];
-                    ctx.fillRect(offsetX + x * pieceSize, offsetY + y * pieceSize, pieceSize, pieceSize);
+                    ctx.fillRect(
+                        offsetX + x * pieceSize, 
+                        offsetY + y * pieceSize, 
+                        pieceSize, 
+                        pieceSize
+                    );
                     ctx.strokeStyle = 'black';
-                    ctx.strokeRect(offsetX + x * pieceSize, offsetY + y * pieceSize, pieceSize, pieceSize);
+                    ctx.strokeRect(
+                        offsetX + x * pieceSize, 
+                        offsetY + y * pieceSize, 
+                        pieceSize, 
+                        pieceSize
+                    );
                 }
             });
         });
