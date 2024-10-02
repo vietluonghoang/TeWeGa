@@ -9,9 +9,7 @@ body {
 }
 
 #gameContainer {
-    display: grid;
-    grid-template-columns: auto 150px;
-    gap: 20px;
+    display: flex;
 }
 
 #tetrisCanvas {
@@ -19,20 +17,37 @@ body {
 }
 
 #sidePanel {
-    display: grid;
-    grid-template-rows: auto 150px 150px;
-    gap: 20px;
+    display: flex;
+    flex-direction: column;
+    margin-left: 20px;
+    width: 150px;
 }
 
-#infoFrame, .pieceDisplay {
+.infoContainer, .pieceDisplay {
+    position: relative;
     border: 2px solid #000;
     background-color: #fff;
     padding: 10px;
     box-sizing: border-box;
+    margin-bottom: 30px;
+}
+
+.infoContainer {
+    height: 120px;
+}
+
+#infoFrame {
+    height: 100%;
+    overflow: hidden;
+    padding-top: 15px; /* Add padding to push content down */
+}
+
+#infoContent p {
+    margin: 5px 0; /* Reduce margin between paragraphs */
 }
 
 .pieceDisplay {
-    position: relative;
+    height: 90px;
 }
 
 .pieceLabel {

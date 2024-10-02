@@ -21,9 +21,9 @@ canvas.height = GRID_HEIGHT;
 const nextPieceCanvas = document.getElementById('nextPieceCanvas');
 const heldPieceCanvas = document.getElementById('heldPieceCanvas');
 nextPieceCanvas.width = 150;
-nextPieceCanvas.height = 150;
+nextPieceCanvas.height = 90; // Reduced from 120 to 90
 heldPieceCanvas.width = 150;
-heldPieceCanvas.height = 150;
+heldPieceCanvas.height = 90; // Reduced from 120 to 90
 
 const SHAPES = [
     [[1, 1, 1, 1]],
@@ -90,49 +90,37 @@ function generatePiece() {
     };
 }
 
-// Add these new functions
-function drawNextPiece() {
-    const nextPieceCanvas = document.getElementById('nextPieceCanvas');
-    const nextCtx = nextPieceCanvas.getContext('2d');
-    nextCtx.clearRect(0, 0, nextPieceCanvas.width, nextPieceCanvas.height);
+function drawPieceInCanvas(piece, canvas) {
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    if (piece) {
+        const pieceSize = Math.floor(BLOCK_SIZE * 0.75); // 75% of the main grid block size
+        const maxPieceWidth = piece.shape[0].length * pieceSize;
+        const maxPieceHeight = piece.shape.length * pieceSize;
+        
+        const offsetX = Math.floor((canvas.width - maxPieceWidth) / 2);
+        const offsetY = Math.floor((canvas.height - maxPieceHeight) / 2);
 
-    // Center the piece in the canvas
-    const offsetX = (nextPieceCanvas.width - nextPiece.shape[0].length * BLOCK_SIZE) / 2;
-    const offsetY = (nextPieceCanvas.height - nextPiece.shape.length * BLOCK_SIZE) / 2;
-
-    nextPiece.shape.forEach((row, y) => {
-        row.forEach((value, x) => {
-            if (value) {
-                nextCtx.fillStyle = nextPiece.color;
-                nextCtx.fillRect(offsetX + x * BLOCK_SIZE, offsetY + y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
-                nextCtx.strokeStyle = SHAPE_BORDER_COLOR;
-                nextCtx.strokeRect(offsetX + x * BLOCK_SIZE, offsetY + y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
-            }
-        });
-    });
-}
-
-function drawHeldPiece() {
-    const heldPieceCanvas = document.getElementById('heldPieceCanvas');
-    const heldCtx = heldPieceCanvas.getContext('2d');
-    heldCtx.clearRect(0, 0, heldPieceCanvas.width, heldPieceCanvas.height);
-
-    if (heldPiece) {
-        // Center the piece in the canvas
-        const offsetX = (heldPieceCanvas.width - heldPiece.shape[0].length * BLOCK_SIZE) / 2;
-        const offsetY = (heldPieceCanvas.height - heldPiece.shape.length * BLOCK_SIZE) / 2;
-
-        heldPiece.shape.forEach((row, y) => {
+        piece.shape.forEach((row, y) => {
             row.forEach((value, x) => {
-                if (value) {
-                    heldCtx.fillStyle = heldPiece.color;
-                    heldCtx.fillRect(offsetX + x * BLOCK_SIZE, offsetY + y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
-                    heldCtx.strokeStyle = SHAPE_BORDER_COLOR;
-                    heldCtx.strokeRect(offsetX + x * BLOCK_SIZE, offsetY + y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                if (value !== 0) {
+                    ctx.fillStyle = COLORS[piece.shapeIndex];
+                    ctx.fillRect(offsetX + x * pieceSize, offsetY + y * pieceSize, pieceSize, pieceSize);
+                    ctx.strokeStyle = 'black';
+                    ctx.strokeRect(offsetX + x * pieceSize, offsetY + y * pieceSize, pieceSize, pieceSize);
                 }
             });
         });
     }
+}
+
+function drawNextPiece() {
+    drawPieceInCanvas(nextPiece, nextPieceCanvas);
+}
+
+function drawHeldPiece() {
+    drawPieceInCanvas(heldPiece, heldPieceCanvas);
 }
 
 function holdPiece() {
@@ -239,10 +227,11 @@ function drawScore() {
     const minutes = Math.floor(elapsedTime / 60);
     const seconds = elapsedTime % 60;
 
-    infoFrame.innerHTML = `
-        <p style="margin: 10px;">Score: ${score}</p>
-        <p style="margin: 10px;">Lines: ${linesCleared}</p>
-        <p style="margin: 10px;">Time: ${minutes}:${seconds.toString().padStart(2, '0')}</p>
+    const infoContent = document.getElementById('infoContent');
+    infoContent.innerHTML = `
+        <p>Score: ${score}</p>
+        <p>Lines: ${linesCleared}</p>
+        <p>Time: ${minutes}:${seconds.toString().padStart(2, '0')}</p>
     `;
 }
 
@@ -443,12 +432,7 @@ function update(time = 0) {
             if (currentPiece.y < 0) {
                 console.log("Game over condition met");
                 alert(`Game Over! Your score: ${score}\nLines cleared: ${linesCleared}`);
-                board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
-                score = 0;
-                linesCleared = 0;  // Reset lines cleared
-                currentPiece = newPiece();
-                canHold = true;  // Reset canHold flag
-                heldPiece = null;  // Clear held piece
+                initializeGame(); // Reset the game, including the elapsed time
             } else {
                 merge();
             }
@@ -502,9 +486,14 @@ document.addEventListener('keydown', event => {
 
 // Modify the game initialization
 function initializeGame() {
+    board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
+    score = 0;
+    linesCleared = 0;
     currentPiece = newPiece();
     nextPiece = generatePiece();
-    startTime = new Date(); // Set the start time when initializing the game
+    canHold = true;
+    heldPiece = null;
+    startTime = new Date(); // Reset the start time
     update(); // Start the game loop
 }
 
