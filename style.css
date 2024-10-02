@@ -26,7 +26,7 @@ body {
     display: flex;
     flex-direction: column;
     width: 150px;
-    margin: 0; /* Remove the horizontal margin */
+    margin: 0;
 }
 
 .frame {
@@ -86,12 +86,20 @@ button {
 }
 
 .infoContainer {
-    height: 120px;
+    display: flex;
+    flex-direction: column;
+    border: 2px solid #000;
+    background-color: #fff;
+    padding: 10px;
+    box-sizing: border-box;
+    margin-bottom: 20px;
+    height: auto; /* Allow height to adjust automatically */
+    min-height: 120px; /* Set a minimum height */
 }
 
 #infoFrame {
-    height: 100%;
-    overflow: hidden;
+    flex-grow: 1;
+    overflow: visible; /* Allow content to be fully visible */
     padding-top: 15px;
 }
 
