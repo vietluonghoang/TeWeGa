@@ -360,6 +360,12 @@ function merge() {
     console.log("Board state after merge:", JSON.stringify(board));
 
     removeRows();  // This will now set up the delayed row removal
+    
+    // Reset canHold flag
+    canHold = true;
+    
+    // Generate new piece
+    currentPiece = newPiece();
 }
 
 function removeRows() {
@@ -433,9 +439,10 @@ function update(time = 0) {
                 score = 0;
                 linesCleared = 0;  // Reset lines cleared
                 currentPiece = newPiece();
+                canHold = true;  // Reset canHold flag
+                heldPiece = null;  // Clear held piece
             } else {
                 merge();
-                currentPiece = newPiece();
             }
             isLocking = false;
             lockTimer = 0;
