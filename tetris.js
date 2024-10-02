@@ -26,13 +26,13 @@ heldPieceCanvas.width = 150;
 heldPieceCanvas.height = 90; // Reduced from 120 to 90
 
 const SHAPES = [
-    [[1, 1, 1, 1]],
-    [[1, 1], [1, 1]],
-    [[1, 1, 1], [0, 1, 0]],
-    [[1, 1, 1], [1, 0, 0]],
-    [[1, 1, 1], [0, 0, 1]],
-    [[1, 1, 0], [0, 1, 1]],
-    [[0, 1, 1], [1, 1, 0]]
+    [[0,0,0,0], [1,1,1,1], [0,0,0,0], [0,0,0,0]], // I
+    [[1,1], [1,1]], // O
+    [[0,1,0], [1,1,1], [0,0,0]], // T
+    [[0,1,1], [1,1,0], [0,0,0]], // S
+    [[1,1,0], [0,1,1], [0,0,0]], // Z
+    [[1,0,0], [1,1,1], [0,0,0]], // J
+    [[0,0,1], [1,1,1], [0,0,0]]  // L
 ];
 
 const COLORS = ['cyan', 'yellow', 'purple', 'green', 'red', 'blue', 'orange'];
@@ -56,9 +56,9 @@ const FLASH_COUNT = 5; // Number of times to flash
 let flashWhite = false; // New variable to track flash state
 
 const DIFFICULTY_LEVELS = {
-    EASY: { speed: 1000, score_multiplier: 1 },
-    MEDIUM: { speed: 750, score_multiplier: 1.5 },
-    HARD: { speed: 500, score_multiplier: 2 }
+    EASY: { speed: 500, score_multiplier: 1 },
+    MEDIUM: { speed: 350, score_multiplier: 1.5 },
+    HARD: { speed: 150, score_multiplier: 2 }
 };
 
 let currentDifficulty = DIFFICULTY_LEVELS.EASY;
@@ -71,6 +71,26 @@ let startTime; // Add this near the top of your file with other variable declara
 let gameMode = 'Classic';
 let isPaused = false;
 let lastTime = 0;
+
+// Add these near the top of your file with other variable declarations
+let level = 1;
+let combo = 0;
+let lastClearWasTetris = false;
+let lastMoveWasTSpin = false;
+
+const LEVEL_UP_LINES = 10;
+const BASE_SCORES = {
+    SINGLE: 100,
+    DOUBLE: 300,
+    TRIPLE: 500,
+    TETRIS: 800,
+    MINI_TSPIN: 100,
+    TSPIN: 400,
+    MINI_TSPIN_SINGLE: 200,
+    TSPIN_SINGLE: 800,
+    TSPIN_DOUBLE: 1200,
+    TSPIN_TRIPLE: 1600
+};
 
 function focusCanvas() {
     canvas.focus();
@@ -270,6 +290,7 @@ function drawScore() {
     infoContent.innerHTML = `
         <p>Score: ${score}</p>
         <p>Lines: ${linesCleared}</p>
+        <p>Level: ${level}</p>
         <p>Time: ${minutes}:${seconds.toString().padStart(2, '0')}</p>
     `;
 }
@@ -311,9 +332,19 @@ function moveRight() {
 }
 
 function rotate() {
-    const rotated = currentPiece.shape[0].map((_, i) => 
-        currentPiece.shape.map(row => row[i]).reverse()
-    );
+    let rotated;
+    const pieceType = currentPiece.shapeIndex;
+
+    if (pieceType === 1) { // O piece
+        rotated = currentPiece.shape; // O piece doesn't rotate
+    } else if (pieceType === 0) { // I piece
+        rotated = rotateIPiece(currentPiece.shape);
+    } else if (pieceType === 2) { // T piece
+        rotated = rotateTpiece(currentPiece.shape);
+    } else {
+        rotated = rotatePiece(currentPiece.shape);
+    }
+
     const prevShape = currentPiece.shape;
     const prevX = currentPiece.x;
     const prevY = currentPiece.y;
@@ -355,6 +386,10 @@ function rotate() {
         currentPiece.y -= kickY;
     }
 
+    if (kicked) {
+        lastMoveWasTSpin = checkTSpin();
+    }
+
     if (!kicked) {
         currentPiece.shape = prevShape;
         currentPiece.x = prevX;
@@ -362,6 +397,51 @@ function rotate() {
     }
 
     updateCanvas();
+}
+
+function rotateIPiece(shape) {
+    // Four states of I piece
+    const states = [
+        [[0,0,0,0], [1,1,1,1], [0,0,0,0], [0,0,0,0]],
+        [[0,0,1,0], [0,0,1,0], [0,0,1,0], [0,0,1,0]],
+        [[0,0,0,0], [0,0,0,0], [1,1,1,1], [0,0,0,0]],
+        [[0,1,0,0], [0,1,0,0], [0,1,0,0], [0,1,0,0]]
+    ];
+    
+    // Find current state and return next state
+    for (let i = 0; i < states.length; i++) {
+        if (JSON.stringify(shape) === JSON.stringify(states[i])) {
+            return states[(i + 1) % states.length];
+        }
+    }
+    
+    // If not found (shouldn't happen), return original shape
+    return shape;
+}
+
+function rotateTpiece(shape) {
+    // Four states of T piece
+    const states = [
+        [[0,1,0], [1,1,1], [0,0,0]],
+        [[0,1,0], [0,1,1], [0,1,0]],
+        [[0,0,0], [1,1,1], [0,1,0]],
+        [[0,1,0], [1,1,0], [0,1,0]]
+    ];
+    
+    // Find current state and return next state
+    for (let i = 0; i < states.length; i++) {
+        if (JSON.stringify(shape) === JSON.stringify(states[i])) {
+            return states[(i + 1) % states.length];
+        }
+    }
+    
+    // If not found (shouldn't happen), return original shape
+    return shape;
+}
+
+function rotatePiece(shape) {
+    // Standard rotation for other pieces
+    return shape[0].map((_, i) => shape.map(row => row[i]).reverse());
 }
 
 function collision() {
@@ -439,16 +519,114 @@ function flashCompletedRows(currentFlash) {
 }
 
 function clearCompletedRows() {
+    const rowsCleared = completedRows.length;
+    let scoreIncrease = 0;
+
+    // Determine if the last move was a T-Spin
+    const isTSpin = checkTSpin();
+
+    // Calculate score based on lines cleared and T-Spin
+    if (rowsCleared > 0) {
+        if (isTSpin) {
+            switch (rowsCleared) {
+                case 1:
+                    scoreIncrease = lastMoveWasTSpin ? BASE_SCORES.TSPIN_SINGLE : BASE_SCORES.MINI_TSPIN_SINGLE;
+                    break;
+                case 2:
+                    scoreIncrease = BASE_SCORES.TSPIN_DOUBLE;
+                    break;
+                case 3:
+                    scoreIncrease = BASE_SCORES.TSPIN_TRIPLE;
+                    break;
+            }
+        } else {
+            switch (rowsCleared) {
+                case 1:
+                    scoreIncrease = BASE_SCORES.SINGLE;
+                    break;
+                case 2:
+                    scoreIncrease = BASE_SCORES.DOUBLE;
+                    break;
+                case 3:
+                    scoreIncrease = BASE_SCORES.TRIPLE;
+                    break;
+                case 4:
+                    scoreIncrease = BASE_SCORES.TETRIS;
+                    break;
+            }
+        }
+
+        // Apply back-to-back bonus
+        if ((rowsCleared === 4 || isTSpin) && lastClearWasTetris) {
+            scoreIncrease *= 1.5;
+        }
+
+        // Apply combo bonus
+        if (combo > 0) {
+            scoreIncrease += 50 * combo * level;
+        }
+
+        // Apply level multiplier
+        scoreIncrease *= level;
+
+        // Update score and lines cleared
+        score += Math.floor(scoreIncrease);
+        linesCleared += rowsCleared;
+
+        // Update combo
+        combo++;
+
+        // Check for level up
+        if (linesCleared >= level * LEVEL_UP_LINES) {
+            levelUp();
+        }
+
+        // Update lastClearWasTetris
+        lastClearWasTetris = (rowsCleared === 4 || isTSpin);
+    } else {
+        // Reset combo if no lines were cleared
+        combo = 0;
+    }
+
+    // Clear the rows and update the board
     completedRows.forEach(y => {
         board.splice(y, 1);
         board.unshift(Array(COLS).fill(0));
-        console.log("+++Cleared row: " + y);
     });
-    score += completedRows.length * 100 * currentDifficulty.score_multiplier;
-    linesCleared += completedRows.length;  // Update total lines cleared
+
+    // Reset completedRows
     completedRows = [];
+
+    // Update display
     drawScore();
     updateCanvas();
+}
+
+function checkTSpin() {
+    // This is a simplified T-Spin detection.
+    // A full implementation would be more complex.
+    if (currentPiece.shapeIndex !== 2) return false; // Not a T piece
+    
+    let cornersFilled = 0;
+    const corners = [
+        [-1, -1], [1, -1], [-1, 1], [1, 1]
+    ];
+    
+    corners.forEach(([dx, dy]) => {
+        const newX = currentPiece.x + dx;
+        const newY = currentPiece.y + dy;
+        if (newX < 0 || newX >= COLS || newY >= ROWS || (newY >= 0 && board[newY][newX])) {
+            cornersFilled++;
+        }
+    });
+    
+    return cornersFilled >= 3;
+}
+
+function levelUp() {
+    level++;
+    // Increase game speed
+    currentDifficulty.speed = Math.max(currentDifficulty.speed - 50, 100);
 }
 
 let dropCounter = 0;
