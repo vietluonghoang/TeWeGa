@@ -10,17 +10,70 @@ body {
 
 #gameContainer {
     display: flex;
+    align-items: flex-start;
 }
 
 #tetrisCanvas {
     border: 3px solid #000;
+    margin: 0 20px; /* Add 20px margin on both sides of the canvas */
 }
 
-#sidePanel {
+#tetrisCanvas:focus {
+    outline: 2px solid #007bff; /* or any color you prefer */
+}
+
+.sidePanel {
     display: flex;
     flex-direction: column;
-    margin-left: 20px;
     width: 150px;
+    margin: 0; /* Remove the horizontal margin */
+}
+
+.frame {
+    border: 2px solid #000;
+    background-color: #fff;
+    padding: 10px;
+    box-sizing: border-box;
+    margin-bottom: 20px;
+}
+
+.frame h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
+button {
+    display: block;
+    width: 100%;
+    margin-bottom: 5px;
+    padding: 5px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.modeButton, .difficultyButton {
+    background-color: #ccc;
+    color: #000;
+}
+
+.modeButton.selected, .difficultyButton.selected {
+    background-color: #007bff;
+    color: #fff;
+}
+
+#pauseButton {
+    background-color: #ffc107;
+}
+
+#pauseButton.resume {
+    background-color: #28a745;
+}
+
+#restartButton {
+    background-color: #dc3545;
+    color: #fff;
 }
 
 .infoContainer, .pieceDisplay {
@@ -29,7 +82,7 @@ body {
     background-color: #fff;
     padding: 10px;
     box-sizing: border-box;
-    margin-bottom: 30px;
+    margin-bottom: 20px;
 }
 
 .infoContainer {
@@ -39,11 +92,11 @@ body {
 #infoFrame {
     height: 100%;
     overflow: hidden;
-    padding-top: 15px; /* Add padding to push content down */
+    padding-top: 15px;
 }
 
 #infoContent p {
-    margin: 5px 0; /* Reduce margin between paragraphs */
+    margin: 5px 0;
 }
 
 .pieceDisplay {

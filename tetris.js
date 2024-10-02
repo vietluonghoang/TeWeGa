@@ -68,6 +68,14 @@ let canHold = true;
 
 let startTime; // Add this near the top of your file with other variable declarations
 
+let gameMode = 'Classic';
+let isPaused = false;
+let lastTime = 0;
+
+function focusCanvas() {
+    canvas.focus();
+}
+
 // Modify the newPiece function
 function newPiece() {
     if (!nextPiece) {
@@ -140,7 +148,38 @@ function holdPiece() {
 
 function changeDifficulty(level) {
     currentDifficulty = DIFFICULTY_LEVELS[level];
-    // You might want to adjust other game parameters here based on difficulty
+    document.querySelectorAll('.difficultyButton').forEach(btn => {
+        btn.classList.toggle('selected', btn.dataset.difficulty === level);
+    });
+    focusCanvas();
+}
+
+function changeGameMode(mode) {
+    gameMode = mode;
+    document.querySelectorAll('.modeButton').forEach(btn => {
+        btn.classList.toggle('selected', btn.dataset.mode === mode);
+    });
+    // Implement game mode specific logic here
+    focusCanvas();
+}
+
+function togglePause() {
+    isPaused = !isPaused;
+    const pauseButton = document.getElementById('pauseButton');
+    pauseButton.textContent = isPaused ? 'Resume' : 'Pause';
+    pauseButton.classList.toggle('resume', isPaused);
+    
+    if (!isPaused) {
+        // Resume the game loop
+        lastTime = performance.now();
+        requestAnimationFrame(gameLoop);
+    }
+    focusCanvas();
+}
+
+function restartGame() {
+    initializeGame();
+    // No need to call focusCanvas() here as it's now part of initializeGame
 }
 
 function drawBoard() {
@@ -413,11 +452,9 @@ function clearCompletedRows() {
 }
 
 let dropCounter = 0;
-let lastTime = 0;
 
-function update(time = 0) {
-    const deltaTime = time - lastTime;
-    lastTime = time;
+function update(deltaTime) {
+    if (isPaused) return; // Exit early if the game is paused
 
     dropCounter += deltaTime;
     if (dropCounter > currentDifficulty.speed) {
@@ -446,10 +483,30 @@ function update(time = 0) {
     drawScore(); // This will now include the time
     drawNextPiece();
     drawHeldPiece();
-    requestAnimationFrame(update);
+}
+
+function draw() {
+    updateCanvas();
+    drawScore();
+    drawNextPiece();
+    drawHeldPiece();
+}
+
+function gameLoop(currentTime) {
+    if (isPaused) return;
+
+    const deltaTime = currentTime - lastTime;
+    lastTime = currentTime;
+
+    update(deltaTime);
+    draw();
+
+    requestAnimationFrame(gameLoop);
 }
 
 document.addEventListener('keydown', event => {
+    if (isPaused) return; // Exit early if the game is paused
+
     switch(event.key) {
         case 'ArrowLeft': moveLeft(); break;
         case 'ArrowRight': moveRight(); break;
@@ -494,8 +551,45 @@ function initializeGame() {
     canHold = true;
     heldPiece = null;
     startTime = new Date(); // Reset the start time
-    update(); // Start the game loop
+    isPaused = false;
+    document.getElementById('pauseButton').textContent = 'Pause';
+    document.getElementById('pauseButton').classList.remove('resume');
+    changeGameMode('Classic');
+    changeDifficulty('EASY');
+    lastTime = performance.now();
+    requestAnimationFrame(gameLoop);
+    
+    // Focus the canvas after initialization
+    focusCanvas();
 }
+
+// Event listeners for new buttons
+document.querySelectorAll('.modeButton').forEach(btn => {
+    btn.addEventListener('click', () => {
+        changeGameMode(btn.dataset.mode);
+        focusCanvas();
+    });
+});
+
+document.querySelectorAll('.difficultyButton').forEach(btn => {
+    btn.addEventListener('click', () => {
+        changeDifficulty(btn.dataset.difficulty);
+        focusCanvas();
+    });
+});
+
+document.getElementById('pauseButton').addEventListener('click', () => {
+    togglePause();
+    focusCanvas();
+});
+
+document.getElementById('restartButton').addEventListener('click', () => {
+    restartGame();
+    focusCanvas();
+});
+
+// When the window loads, initialize the game
+window.addEventListener('load', initializeGame);
 
 // Replace the current game initialization at the bottom of the file with:
 initializeGame();
