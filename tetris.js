@@ -66,6 +66,8 @@ let nextPiece = null;
 let heldPiece = null;
 let canHold = true;
 
+let startTime; // Add this near the top of your file with other variable declarations
+
 // Modify the newPiece function
 function newPiece() {
     if (!nextPiece) {
@@ -232,9 +234,15 @@ function drawPiece() {
 }
 
 function drawScore() {
+    const currentTime = new Date();
+    const elapsedTime = Math.floor((currentTime - startTime) / 1000); // Time in seconds
+    const minutes = Math.floor(elapsedTime / 60);
+    const seconds = elapsedTime % 60;
+
     infoFrame.innerHTML = `
         <p style="margin: 10px;">Score: ${score}</p>
         <p style="margin: 10px;">Lines: ${linesCleared}</p>
+        <p style="margin: 10px;">Time: ${minutes}:${seconds.toString().padStart(2, '0')}</p>
     `;
 }
 
@@ -451,7 +459,7 @@ function update(time = 0) {
     }
 
     updateCanvas();
-    drawScore();
+    drawScore(); // This will now include the time
     drawNextPiece();
     drawHeldPiece();
     requestAnimationFrame(update);
@@ -492,7 +500,13 @@ document.addEventListener('keydown', event => {
     }
 });
 
-// Initialize the game
-currentPiece = newPiece();
-nextPiece = generatePiece();
-update(); // Start the game loop
+// Modify the game initialization
+function initializeGame() {
+    currentPiece = newPiece();
+    nextPiece = generatePiece();
+    startTime = new Date(); // Set the start time when initializing the game
+    update(); // Start the game loop
+}
+
+// Replace the current game initialization at the bottom of the file with:
+initializeGame();
