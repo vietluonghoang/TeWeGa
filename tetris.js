@@ -92,6 +92,14 @@ const BASE_SCORES = {
     TSPIN_TRIPLE: 1600
 };
 
+let isSoftDropping = false;
+let isFastLeft = false;
+let isFastRight = false;
+
+let horizontalMoveCounter = 0;
+const initialMoveDelay = 150; // ms before starting fast move
+const fastMoveInterval = 50; // ms between moves during fast move
+
 function focusCanvas() {
     canvas.focus();
 }
@@ -323,11 +331,15 @@ function moveDown() {
             isLocking = true;
             lockTimer = 0;
         }
+        return false; // Piece couldn't move down
     } else {
         isLocking = false;
         lockTimer = 0;
+        if (isSoftDropping) {
+            score += 1; // Award 1 point for each row of soft drop
+        }
+        return true; // Piece moved down successfully
     }
-    updateCanvas();
 }
 
 function moveLeft() {
@@ -646,11 +658,42 @@ function levelUp() {
 
 let dropCounter = 0;
 
-function update(deltaTime) {
-    if (isPaused) return; // Exit early if the game is paused
+function hardDrop() {
+    let rowsDropped = 0;
+    while (!collision()) {
+        currentPiece.y++;
+        rowsDropped++;
+    }
+    currentPiece.y--; // Move back up one row to the last valid position
+    score += rowsDropped * 2; // Award 2 points per row for hard drop
+    
+    // Instead of calling merge() directly, set up the piece for immediate locking
+    isLocking = true;
+    lockTimer = lockDelay; // Set to lockDelay to trigger immediate locking in the next update
+    
+    updateCanvas(); // Immediately update the canvas to show the new position
+}
 
+function update(deltaTime) {
+    if (isPaused) return;
+
+    // Handle horizontal movement
+    horizontalMoveCounter += deltaTime;
+    if (isFastLeft || isFastRight) {
+        if (horizontalMoveCounter > initialMoveDelay) {
+            if (horizontalMoveCounter > fastMoveInterval) {
+                if (isFastLeft) moveLeft();
+                if (isFastRight) moveRight();
+                horizontalMoveCounter = initialMoveDelay; // Reset to just after initial delay
+            }
+        }
+    } else {
+        horizontalMoveCounter = 0;
+    }
+
+    // Handle vertical movement (soft drop and normal drop)
     dropCounter += deltaTime;
-    if (dropCounter > currentDifficulty.speed) {
+    if (dropCounter > (isSoftDropping ? currentDifficulty.speed / 20 : currentDifficulty.speed)) {
         moveDown();
         dropCounter = 0;
     }
@@ -673,7 +716,7 @@ function update(deltaTime) {
     }
 
     updateCanvas();
-    drawScore(); // This will now include the time
+    drawScore();
     drawNextPiece();
     drawHeldPiece();
 }
@@ -698,13 +741,24 @@ function gameLoop(currentTime) {
 }
 
 document.addEventListener('keydown', event => {
-    if (isPaused) return; // Exit early if the game is paused
+    if (isPaused) return;
 
     switch(event.key) {
-        case 'ArrowLeft': moveLeft(); break;
-        case 'ArrowRight': moveRight(); break;
-        case 'ArrowDown': moveDown(); break;
+        case 'ArrowLeft':
+            moveLeft();
+            isFastLeft = true;
+            horizontalMoveCounter = 0;
+            break;
+        case 'ArrowRight':
+            moveRight();
+            isFastRight = true;
+            horizontalMoveCounter = 0;
+            break;
+        case 'ArrowDown': 
+            isSoftDropping = true;
+            break;
         case 'ArrowUp': rotate(); break;
+        case ' ': hardDrop(); break;
         case 'c':
         case 'C':
             holdPiece();
@@ -717,6 +771,21 @@ document.addEventListener('keydown', event => {
             break;
         case '3':
             changeDifficulty('HARD');
+            break;
+    }
+});
+
+// Update the keyup event listener
+document.addEventListener('keyup', event => {
+    switch(event.key) {
+        case 'ArrowDown':
+            isSoftDropping = false;
+            break;
+        case 'ArrowLeft':
+            isFastLeft = false;
+            break;
+        case 'ArrowRight':
+            isFastRight = false;
             break;
     }
 });
