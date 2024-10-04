@@ -56,10 +56,10 @@ const FLASH_COUNT = 5; // Number of times to flash
 let flashWhite = false; // New variable to track flash state
 
 const DIFFICULTY_LEVELS = {
-    EASY: { startLevel: 1, score_multiplier: 1 },
-    MEDIUM: { startLevel: 5, score_multiplier: 1.5 },
-    HARD: { startLevel: 10, score_multiplier: 2 },
-    EXPERT: { startLevel: 15, score_multiplier: 2.5 }
+    EASY: { startLevel: 1 },
+    MEDIUM: { startLevel: 5 },
+    HARD: { startLevel: 10 },
+    EXPERT: { startLevel: 15 }
 };
 
 let currentDifficulty = DIFFICULTY_LEVELS.EASY;
