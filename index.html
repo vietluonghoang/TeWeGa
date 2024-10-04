@@ -8,15 +8,7 @@
 </head>
 <body>
     <div id="gameContainer">
-        <div id="topPanel">
-            <h2>Tetris Game</h2>
-            <div class="frame">
-                <h3>Controls</h3>
-                <div id="controls">
-                    <button id="pauseButton">Pause</button>
-                    <button id="restartButton">Restart</button>
-                </div>
-            </div>
+        <div id="leftSidePanel" class="sidePanel">
             <div class="frame">
                 <h3>Game Modes</h3>
                 <div id="gameModes">
@@ -33,26 +25,29 @@
                     <button class="difficultyButton" data-difficulty="HARD">Hard</button>
                 </div>
             </div>
-        </div>
-        <div id="gameArea">
-            <div id="leftSidePanel" class="sidePanel">
-                <div class="pieceDisplay">
-                    <span class="pieceLabel">Hold</span>
-                    <canvas id="heldPieceCanvas"></canvas>
-                </div>
-                <div class="infoContainer">
-                    <span class="pieceLabel">Statistic</span>
-                    <div id="infoFrame">
-                        <div id="infoContent"></div>
-                    </div>
+            <div class="frame">
+                <h3>Controls</h3>
+                <div id="controls">
+                    <button id="pauseButton">Pause</button>
+                    <button id="restartButton">Restart</button>
                 </div>
             </div>
-            <canvas id="tetrisCanvas" tabindex="0"></canvas>
-            <div id="sidePanel">
-                <div class="pieceDisplay">
-                    <span class="pieceLabel">Next</span>
-                    <canvas id="nextPieceCanvas"></canvas>
+        </div>
+        <canvas id="tetrisCanvas" tabindex="0"></canvas>
+        <div id="sidePanel">
+            <div class="infoContainer">
+                <span class="pieceLabel">Statistic</span>
+                <div id="infoFrame">
+                    <div id="infoContent"></div>
                 </div>
+            </div>
+            <div class="pieceDisplay">
+                <span class="pieceLabel">Next</span>
+                <canvas id="nextPieceCanvas"></canvas>
+            </div>
+            <div class="pieceDisplay">
+                <span class="pieceLabel">Hold</span>
+                <canvas id="heldPieceCanvas"></canvas>
             </div>
         </div>
     </div>
