@@ -56,12 +56,15 @@ const FLASH_COUNT = 5; // Number of times to flash
 let flashWhite = false; // New variable to track flash state
 
 const DIFFICULTY_LEVELS = {
-    EASY: { speed: 500, score_multiplier: 1 },
-    MEDIUM: { speed: 350, score_multiplier: 1.5 },
-    HARD: { speed: 150, score_multiplier: 2 }
+    EASY: { startLevel: 1, score_multiplier: 1 },
+    MEDIUM: { startLevel: 5, score_multiplier: 1.5 },
+    HARD: { startLevel: 10, score_multiplier: 2 },
+    EXPERT: { startLevel: 15, score_multiplier: 2.5 }
 };
 
 let currentDifficulty = DIFFICULTY_LEVELS.EASY;
+let level = currentDifficulty.startLevel;
+
 let nextPiece = null;
 let heldPiece = null;
 let canHold = true;
@@ -73,7 +76,6 @@ let isPaused = false;
 let lastTime = 0;
 
 // Add these near the top of your file with other variable declarations
-let level = 1;
 let combo = 0;
 let lastClearWasTetris = false;
 let lastMoveWasTSpin = false;
@@ -189,10 +191,12 @@ function holdPiece() {
     }
 }
 
-function changeDifficulty(level) {
-    currentDifficulty = DIFFICULTY_LEVELS[level];
+function changeDifficulty(difficultyLevel) {
+    currentDifficulty = DIFFICULTY_LEVELS[difficultyLevel];
+    level = currentDifficulty.startLevel;
+    currentDifficulty.speed = calculateSpeed(level);
     document.querySelectorAll('.difficultyButton').forEach(btn => {
-        btn.classList.toggle('selected', btn.dataset.difficulty === level);
+        btn.classList.toggle('selected', btn.dataset.difficulty === difficultyLevel);
     });
     focusCanvas();
 }
@@ -659,7 +663,6 @@ function calculateSpeed(level) {
 // Modify the levelUp function
 function levelUp() {
     level++;
-    // Update game speed according to Tetris guidelines
     currentDifficulty.speed = calculateSpeed(level);
 }
 
@@ -830,7 +833,7 @@ function initializeGame() {
     
     // Focus the canvas after initialization
     focusCanvas();
-    level = 1;
+    level = currentDifficulty.startLevel;
     currentDifficulty.speed = calculateSpeed(level);
 }
 
