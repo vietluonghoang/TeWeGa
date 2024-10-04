@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tetris Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="topPanel">
+            <h2>Tetris Game</h2>
+            <div class="frame">
+                <h3>Controls</h3>
+                <div id="controls">
+                    <button id="pauseButton">Pause</button>
+                    <button id="restartButton">Restart</button>
+                </div>
+            </div>
+            <div class="frame">
+                <h3>Game Modes</h3>
+                <div id="gameModes">
+                    <button class="modeButton selected" data-mode="Classic">Classic</button>
+                    <button class="modeButton" data-mode="Test1">Test 1</button>
+                    <button class="modeButton" data-mode="Test2">Test 2</button>
+                </div>
+            </div>
+            <div class="frame">
+                <h3>Difficulties</h3>
+                <div id="difficulties">
+                    <button class="difficultyButton selected" data-difficulty="EASY">Easy</button>
+                    <button class="difficultyButton" data-difficulty="MEDIUM">Medium</button>
+                    <button class="difficultyButton" data-difficulty="HARD">Hard</button>
+                </div>
+            </div>
+        </div>
+        <div id="gameArea">
+            <div id="leftSidePanel" class="sidePanel">
+                <div class="pieceDisplay">
+                    <span class="pieceLabel">Hold</span>
+                    <canvas id="heldPieceCanvas"></canvas>
+                </div>
+                <div class="infoContainer">
+                    <span class="pieceLabel">Statistic</span>
+                    <div id="infoFrame">
+                        <div id="infoContent"></div>
+                    </div>
+                </div>
+            </div>
+            <canvas id="tetrisCanvas" tabindex="0"></canvas>
+            <div id="sidePanel">
+                <div class="pieceDisplay">
+                    <span class="pieceLabel">Next</span>
+                    <canvas id="nextPieceCanvas"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="tetris.js"></script>
+</body>
+</html>

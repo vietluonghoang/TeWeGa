@@ -1,276 +1,274 @@
-// Constants for grid size
-const COLS = 10;
+const playboard = document.getElementById('playboard');
+const gameOverPopup = document.getElementById('game-over-popup');
+const retryButton = document.getElementById('retry-button');
+
 const ROWS = 20;
-const CELL_SIZE = 30; // Optional: Adjust for visual size
-
-// Tetrimino shapes and rotations
-const shapes = [
-    [[1, 1, 1, 1]], // I-shape
-    [[1, 1], [1, 1]], // O-shape
-    [[0, 1, 0], [1, 1, 1]], // T-shape
-    [[1, 1, 0], [0, 1, 1]], // S-shape
-    [[0, 1, 1], [1, 1, 0]], // Z-shape
-    [[1, 0, 0], [1, 1, 1]], // L-shape
-    [[0, 0, 1], [1, 1, 1]], // J-shape
-];
-
-let grid = [];
-let currentShape;
-let gameInterval;
+const COLS = 10;
+let grid = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+let currentShape = null;
+let gameInterval = null;
 let isGameOver = false;
 
-// Helper function to create the grid
-function createGrid() {
-    grid = [];
-    const playboard = document.getElementById('playboard');
-    playboard.innerHTML = ''; // Clear previous cells
+// Define the 7 Tetrimino shapes
+const SHAPES = [
+    // I-shape
+    [
+        [0, 0, 0, 0],
+        [1, 1, 1, 1],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0]
+    ],
+    // J-shape
+    [
+        [1, 0, 0],
+        [1, 1, 1],
+        [0, 0, 0]
+    ],
+    // L-shape
+    [
+        [0, 0, 1],
+        [1, 1, 1],
+        [0, 0, 0]
+    ],
+    // O-shape
+    [
+        [1, 1],
+        [1, 1]
+    ],
+    // S-shape
+    [
+        [0, 1, 1],
+        [1, 1, 0],
+        [0, 0, 0]
+    ],
+    // T-shape
+    [
+        [0, 1, 0],
+        [1, 1, 1],
+        [0, 0, 0]
+    ],
+    // Z-shape
+    [
+        [1, 1, 0],
+        [0, 1, 1],
+        [0, 0, 0]
+    ]
+];
 
+// Initialize the game
+function init() {
+    createGrid();
+    spawnShape();
+    gameInterval = setInterval(moveShapeDown, 500); // Moves down 2 cells every second
+}
+
+// Create the playboard grid in the DOM
+function createGrid() {
     for (let row = 0; row < ROWS; row++) {
-        const gridRow = [];
         for (let col = 0; col < COLS; col++) {
-            gridRow.push(0);
             const cell = document.createElement('div');
-            cell.id = `cell-${row}-${col}`;
-            cell.style.width = `${CELL_SIZE}px`;
-            cell.style.height = `${CELL_SIZE}px`;
-            cell.classList.add('cell');
             playboard.appendChild(cell);
         }
-        grid.push(gridRow);
     }
 }
 
-// Function to spawn a new shape
+// Spawn a random Tetrimino shape
 function spawnShape() {
-    const randomIndex = Math.floor(Math.random() * shapes.length);
+    const randomShape = SHAPES[Math.floor(Math.random() * SHAPES.length)];
     currentShape = {
-        shape: shapes[randomIndex],
-        position: { x: Math.floor(COLS / 2) - 1, y: -1 } // Start just above the grid
+        shape: randomShape,
+        position: { x: Math.floor(COLS / 2) - Math.floor(randomShape[0].length / 2), y: 0 } // Spawn at the top
     };
-    drawShape(); // Draw the shape immediately after spawning
+    drawShape();
 }
 
-// Check if the shape can move to a new position
-function canMove(newX, newY) {
+// Move the shape down
+function moveShapeDown() {
+    if (!canMoveDown()) {
+        lockShape();
+        spawnShape();
+        return;
+    }
+    currentShape.position.y += 1;
+    drawShape();
+}
+
+// Check if shape can move down
+function canMoveDown() {
     return currentShape.shape.every((row, y) => {
         return row.every((cell, x) => {
-            if (cell === 0) {
-                return true; // Ignore empty cells
-            }
-
-            const posX = newX + x;
-            const posY = newY + y;
-
-            // Allow movement if shape is above the grid
-            if (posY < 0) {
-                return true;
-            }
-
-            // Check if it's within grid bounds and not overlapping a locked shape
-            if (posX >= 0 && posX < COLS && posY >= 0 && posY < ROWS) {
-                return grid[posY][posX] === 0;
-            }
-
-            // Prevent out of bounds or collision
-            return false;
-        });
-    });
-}
-
-// Draw the current shape on the grid
-function drawShape() {
-    currentShape.shape.forEach((row, y) => {
-        row.forEach((cell, x) => {
             if (cell === 1) {
-                const posX = currentShape.position.x + x;
-                const posY = currentShape.position.y + y;
-
-                if (posY >= 0 && posY < ROWS && posX >= 0 && posX < COLS) {
-                    const cellElement = document.getElementById(`cell-${posY}-${posX}`);
-                    if (cellElement) {
-                        cellElement.classList.add('filled');
-                        cellElement.style.backgroundColor = 'black'; // Set the color of the shape here
-                    }
+                const newX = currentShape.position.x + x;
+                const newY = currentShape.position.y + y + 1;
+                
+                // Check if out of bounds or blocked
+                if (newY >= ROWS || grid[newY][newX]) {
+                    return false;
                 }
             }
+            return true;
         });
     });
 }
 
-// Clear the current shape from the grid
-function clearShape() {
-    currentShape.shape.forEach((row, y) => {
-        row.forEach((cell, x) => {
-            if (cell === 1) {
-                const posX = currentShape.position.x + x;
-                const posY = currentShape.position.y + y;
+function moveShape(direction) {
+    const newPosition = currentShape.position.x + direction;
 
-                if (posY >= 0 && posY < ROWS && posX >= 0 && posX < COLS) {
-                    const cellElement = document.getElementById(`cell-${posY}-${posX}`);
-                    if (cellElement) {
-                        cellElement.classList.remove('filled');
-                        cellElement.style.backgroundColor = ''; // Reset the background color
-                    }
+    // Check if the shape can move in the desired direction
+    if (canMove(newPosition)) {
+        currentShape.position.x = newPosition;
+        drawShape();
+    }
+}
+
+function canMove(newPosition) {
+    return currentShape.shape.every((row, y) => {
+        return row.every((cell, x) => {
+            if (cell === 1) {
+                const newX = newPosition + x;
+                const newY = currentShape.position.y + y;
+
+                // Check if the new position is within the grid bounds and not blocked
+                if (newX < 0 || newX >= COLS || grid[newY] && grid[newY][newX]) {
+                    return false;
                 }
             }
+            return true;
         });
     });
 }
 
-// Lock the shape in place on the grid
+function rotateShape() {
+    const newShape = currentShape.shape[0].map((val, index) =>
+        currentShape.shape.map(row => row[index]).reverse()
+    );
+
+    // Check if the rotated shape will fit inside the grid
+    if (canRotate(newShape)) {
+        currentShape.shape = newShape;
+        drawShape();
+    }
+}
+
+function canRotate(newShape) {
+    return newShape.every((row, y) => {
+        return row.every((cell, x) => {
+            if (cell === 1) {
+                const newX = currentShape.position.x + x;
+                const newY = currentShape.position.y + y;
+
+                // Check if the new shape is within bounds and not colliding
+                if (newX < 0 || newX >= COLS || newY >= ROWS || (grid[newY] && grid[newY][newX])) {
+                    return false;
+                }
+            }
+            return true;
+        });
+    });
+}
+
+// Lock the shape in place and reset for the next shape
 function lockShape() {
     currentShape.shape.forEach((row, y) => {
         row.forEach((cell, x) => {
             if (cell === 1) {
                 const posX = currentShape.position.x + x;
                 const posY = currentShape.position.y + y;
-                if (posY >= 0 && posY < ROWS && posX >= 0 && posX < COLS) {
-                    grid[posY][posX] = 1;
+                if (posY >= 0) {
+                    grid[posY][posX] = 1; // Mark the grid as occupied with locked cells
+                }
+            }
+        });
+    });
+    checkForClearRows(); // Check if any rows should be cleared
+    drawLockedShapes(); // Ensure locked shapes are drawn after locking
+    spawnShape(); // Spawn the next shape
+}
+
+
+
+// Check for any filled rows and clear them
+function checkForClearRows() {
+    // This will be implemented to clear full rows
+}
+
+// Draw the shape on the grid
+function drawShape() {
+    clearGrid(); // Clear the grid first
+
+    // Draw locked shapes
+    drawLockedShapes();
+
+    // Draw current moving shape
+    currentShape.shape.forEach((row, y) => {
+        row.forEach((cell, x) => {
+            if (cell === 1) {
+                const posX = currentShape.position.x + x;
+                const posY = currentShape.position.y + y;
+
+                if (posY >= 0) { // Don't draw outside the visible grid
+                    const cellDiv = playboard.children[posY * COLS + posX];
+                    cellDiv.style.backgroundColor = 'blue'; // Color for falling shape
                 }
             }
         });
     });
 }
 
-// Move the shape
-function moveShape(dx, dy) {
-    if (canMove(currentShape.position.x + dx, currentShape.position.y + dy)) {
-        clearShape();
-        currentShape.position.x += dx;
-        currentShape.position.y += dy;
-        drawShape();
-    }
-}
 
-// Rotate the shape
-function rotateShape() {
-    const oldShape = currentShape.shape; // Store the old shape
-    const newShape = currentShape.shape[0].map((_, index) => currentShape.shape.map(row => row[index])).reverse();
-
-    // Clear the shape from the grid
-    clearShape();
-
-    currentShape.shape = newShape; // Set the new shape
-
-    // Check if the new position is valid
-    if (!canMove(currentShape.position.x, currentShape.position.y)) {
-        currentShape.shape = oldShape; // Revert to the old shape if rotation is invalid
-    }
-
-    // Draw the shape in its new orientation if valid
-    drawShape();
-}
-
-
-// Check for and clear any full rows
-// Check for and clear any full rows
-function clearRows() {
-    const rowsToClear = [];
-    
-    // Identify which rows are full
-    for (let row = 0; row < ROWS; row++) {
-        if (grid[row].every(cell => cell === 1)) {
-            rowsToClear.push(row);
-        }
-    }
-
-    // Clear the identified rows and shift down the rows above
-    for (const row of rowsToClear) {
-        // Remove the full row from the grid
-        grid.splice(row, 1);
-        // Add a new empty row at the top
-        grid.unshift(new Array(COLS).fill(0));
-
-        // Update DOM to reflect the cleared row
-        for (let col = 0; col < COLS; col++) {
-            const cellElement = document.getElementById(`cell-${row}-${col}`);
-            if (cellElement) {
-                cellElement.classList.remove('filled');
-                cellElement.style.backgroundColor = ''; // Reset the background color
+function drawLockedShapes() {
+    grid.forEach((row, y) => {
+        row.forEach((cell, x) => {
+            if (cell === 1) { // Only draw locked cells
+                const cellDiv = playboard.children[y * COLS + x];
+                cellDiv.style.backgroundColor = 'gray'; // Locked shape color
             }
-        }
-    }
-
-    // Redraw the entire grid to reflect the current state
-    redrawGrid();
+        });
+    });
 }
 
 
-// Redraw the grid based on the current state of the grid array
-function redrawGrid() {
-    for (let row = 0; row < ROWS; row++) {
-        for (let col = 0; col < COLS; col++) {
-            const cellElement = document.getElementById(`cell-${row}-${col}`);
-            if (cellElement) {
-                if (grid[row][col] === 1) {
-                    cellElement.classList.add('filled');
-                    cellElement.style.backgroundColor = 'black'; // Set the color of the filled cell
-                } else {
-                    cellElement.classList.remove('filled');
-                    cellElement.style.backgroundColor = ''; // Reset the background color for empty cells
-                }
-            }
-        }
-    }
+// Clear the grid for redrawing
+function clearGrid() {
+    const cells = playboard.querySelectorAll('div');
+    cells.forEach(cell => {
+        cell.style.backgroundColor = 'transparent'; // Clear only the visual grid
+    });
 }
 
-// End game check and logic
-function checkGameOver() {
-    if (grid[0].some(cell => cell === 1)) {
-        clearInterval(gameInterval); // Stop the game loop
-        document.getElementById('game-over').style.display = 'block'; // Show game over popup
-        isGameOver = true;
-    }
+
+// Show game over popup (not used yet)
+function showGameOverPopup() {
+    gameOverPopup.style.visibility = 'visible';
 }
 
-// Game loop: move shape down and check for locking
-function gameLoop() {
-    if (isGameOver) return;
+// Handle retry button click (not used yet)
+retryButton.addEventListener('click', () => {
+    gameOverPopup.style.visibility = 'hidden';
+    resetGame();
+});
 
-    if (canMove(currentShape.position.x, currentShape.position.y + 1)) {
-        moveShape(0, 1);
-    } else {
-        lockShape();
-        clearRows();
-        checkGameOver();
-        if (!isGameOver) {
-            spawnShape(); // Spawn a new shape if game is not over
-        }
-    }
+// Reset the game
+function resetGame() {
+    grid = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+    clearGrid();
+    isGameOver = false;
+    spawnShape();
+    gameInterval = setInterval(moveShapeDown, 500);
 }
 
-// Event listener for controls
+// Keydown event listener for arrow keys and space bar
 document.addEventListener('keydown', (event) => {
-    if (isGameOver) return;
-
-    switch (event.key) {
-        case 'ArrowLeft':
-            moveShape(-1, 0);
-            break;
-        case 'ArrowRight':
-            moveShape(1, 0);
-            break;
-        case 'ArrowDown':
-            moveShape(0, 1);
-            break;
-        case ' ':
-            rotateShape();
-            break;
+    if (event.key === 'ArrowLeft') {
+        moveShape(-1); // Move left
+    } else if (event.key === 'ArrowRight') {
+        moveShape(1); // Move right
+    } else if (event.key === 'ArrowDown') {
+        moveShapeDown(); // Move down faster
+    } else if (event.key === ' ') {
+        rotateShape(); // Rotate the shape
     }
 });
 
-// Initialize the game
-function startGame() {
-    isGameOver = false;
-    document.getElementById('game-over').style.display = 'none';
-    createGrid();
-    spawnShape();
-    drawShape();
-    gameInterval = setInterval(gameLoop, 500); // Shape moves every 500ms
-}
 
-// Retry button click event
-document.getElementById('retry-btn').addEventListener('click', startGame);
-
-// Start the game on page load
-startGame();
+init();

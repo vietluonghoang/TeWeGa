@@ -1,61 +1,208 @@
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
 body {
     display: flex;
     justify-content: center;
     align-items: center;
     height: 100vh;
+    margin: 0;
     background-color: #f0f0f0;
+    font-family: Arial, sans-serif;
 }
 
-#tetris-container {
-    position: relative;
-}
-
-#playboard {
-    display: grid;
-    grid-template-columns: repeat(10, 30px); /* Assuming a standard 10x20 grid */
-    grid-template-rows: repeat(20, 30px);
-    border: 3px solid;
-    border-image: linear-gradient(45deg, red, orange, yellow, green, blue, indigo, violet) 1;
-    margin: auto;
-}
-
-#playboard div {
-    width: 30px;
-    height: 30px;
-    border: 1px solid gray;
-    background-color: transparent;
-}
-
-#game-over-popup {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    padding: 20px;
-    background-color: white;
-    border: 2px solid black;
+#gameContainer {
     display: flex;
     flex-direction: column;
     align-items: center;
-    visibility: hidden;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
 }
 
-#game-over-popup p {
-    font-size: 24px;
+#tetrisCanvas {
+    border: 3px solid #000;
+    margin: 0 20px; /* Add 20px margin on both sides of the canvas */
+}
+
+#tetrisCanvas:focus {
+    outline: 2px solid #007bff; /* or any color you prefer */
+}
+
+.sidePanel {
+    display: flex;
+    flex-direction: column;
+    width: 150px;
+    margin: 0;
+}
+
+.frame {
+    border: 2px solid #000;
+    background-color: #fff;
+    padding: 10px;
+    box-sizing: border-box;
+    margin-bottom: 20px;
+}
+
+.frame h3 {
+    margin-top: 0;
     margin-bottom: 10px;
 }
 
-#retry-button {
-    padding: 10px 20px;
-    font-size: 16px;
+button {
+    display: block;
+    width: 100%;
+    margin-bottom: 5px;
+    padding: 5px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 14px;
 }
 
-.hidden {
-    display: none;
+.modeButton, .difficultyButton {
+    background-color: #ccc;
+    color: #000;
 }
+
+.modeButton.selected, .difficultyButton.selected {
+    background-color: #007bff;
+    color: #fff;
+}
+
+#pauseButton {
+    background-color: #ffc107;
+}
+
+#pauseButton.resume {
+    background-color: #28a745;
+}
+
+#restartButton {
+    background-color: #dc3545;
+    color: #fff;
+}
+
+.infoContainer, .pieceDisplay {
+    position: relative;
+    border: 2px solid #000;
+    background-color: #fff;
+    padding: 10px;
+    box-sizing: border-box;
+    margin-bottom: 20px;
+}
+
+.infoContainer {
+    display: flex;
+    flex-direction: column;
+    border: 2px solid #000;
+    background-color: #fff;
+    padding: 10px;
+    box-sizing: border-box;
+    margin-bottom: 20px;
+    height: auto; /* Allow height to adjust automatically */
+    min-height: 120px; /* Set a minimum height */
+}
+
+#infoFrame {
+    flex-grow: 1;
+    overflow: visible; /* Allow content to be fully visible */
+    padding-top: 15px;
+}
+
+#infoContent p {
+    margin: 5px 0;
+}
+
+.pieceDisplay {
+    position: relative;
+    border: 2px solid #000;
+    background-color: #fff;
+    padding: 25px 10px 10px;
+    box-sizing: border-box;
+    margin-bottom: 20px;
+    width: 100%;
+    height: auto;
+}
+
+.pieceLabel {
+    position: absolute;
+    top: 5px;
+    left: 10px;
+    font-weight: bold;
+}
+
+#nextPieceCanvas, #heldPieceCanvas {
+    display: block;
+    margin: 0 auto; /* Center the canvas horizontally */
+    max-width: 100%; /* Ensure it doesn't overflow the container */
+}
+
+#topPanel {
+    width: 100%;
+    padding: 15px;
+    background-color: #f0f0f0;
+    border-bottom: 1px solid #ccc;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#topPanel h2 {
+    margin: 0;
+    flex-basis: 100%;
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+#topPanel .frame {
+    flex: 1;
+    margin: 0 10px;
+    min-width: 200px;
+}
+
+#topPanel h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
+#controls, #gameModes, #difficulties {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: nowrap; /* Prevent wrapping */
+    overflow-x: auto; /* Allow horizontal scrolling if needed */
+}
+
+#controls button, #gameModes button, #difficulties button {
+    padding: 5px 10px;
+    cursor: pointer;
+    white-space: nowrap; /* Prevent button text from wrapping */
+}
+
+#gameArea {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    margin-top: 20px;
+}
+
+#leftSidePanel, #sidePanel {
+    display: flex;
+    flex-direction: column;
+    width: 150px;
+    margin: 0 20px;
+}
+
+#leftSidePanel {
+    margin-right: 20px;
+}
+
+#sidePanel {
+    margin-left: 20px;
+}
+
+/* Ensure the canvas maintains its size */
+#tetrisCanvas {
+    /* Add any specific styles for the canvas if needed */
+}
+
+/* Add any additional styles for the existing elements as needed */
