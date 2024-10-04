@@ -650,10 +650,17 @@ function checkTSpin() {
     return cornersFilled >= 3;
 }
 
+// Add this new function
+function calculateSpeed(level) {
+    const frames_per_gridcell = Math.round(Math.pow(0.8 - ((level - 1) * 0.007), level - 1) * 60);
+    return Math.max(frames_per_gridcell * 16.67, 1); // Convert frames to milliseconds, minimum 1ms
+}
+
+// Modify the levelUp function
 function levelUp() {
     level++;
-    // Increase game speed
-    currentDifficulty.speed = Math.max(currentDifficulty.speed - 50, 100);
+    // Update game speed according to Tetris guidelines
+    currentDifficulty.speed = calculateSpeed(level);
 }
 
 let dropCounter = 0;
@@ -823,6 +830,8 @@ function initializeGame() {
     
     // Focus the canvas after initialization
     focusCanvas();
+    level = 1;
+    currentDifficulty.speed = calculateSpeed(level);
 }
 
 // Event listeners for new buttons
