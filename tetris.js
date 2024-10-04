@@ -1,274 +1,857 @@
-const playboard = document.getElementById('playboard');
-const gameOverPopup = document.getElementById('game-over-popup');
-const retryButton = document.getElementById('retry-button');
+// tetris.js
+const canvas = document.getElementById('tetrisCanvas');
+const ctx = canvas.getContext('2d');
+const infoFrame = document.getElementById('infoFrame');
 
 const ROWS = 20;
 const COLS = 10;
-let grid = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
-let currentShape = null;
-let gameInterval = null;
-let isGameOver = false;
+const BLOCK_SIZE = 30;
+const GRID_BORDER_WIDTH = 3;
+const INFO_FRAME_BORDER_WIDTH = 2;
 
-// Define the 7 Tetrimino shapes
+// Calculate new canvas size
+const GRID_WIDTH = COLS * BLOCK_SIZE;
+const GRID_HEIGHT = ROWS * BLOCK_SIZE;
+
+// Set main canvas size
+canvas.width = GRID_WIDTH;
+canvas.height = GRID_HEIGHT;
+
+// Set next piece and held piece canvas sizes
+const nextPieceCanvas = document.getElementById('nextPieceCanvas');
+const heldPieceCanvas = document.getElementById('heldPieceCanvas');
+nextPieceCanvas.width = 150;
+nextPieceCanvas.height = 70; // Reduced from 120 to 90
+heldPieceCanvas.width = 150;
+heldPieceCanvas.height = 70; // Reduced from 120 to 90
+
 const SHAPES = [
-    // I-shape
-    [
-        [0, 0, 0, 0],
-        [1, 1, 1, 1],
-        [0, 0, 0, 0],
-        [0, 0, 0, 0]
-    ],
-    // J-shape
-    [
-        [1, 0, 0],
-        [1, 1, 1],
-        [0, 0, 0]
-    ],
-    // L-shape
-    [
-        [0, 0, 1],
-        [1, 1, 1],
-        [0, 0, 0]
-    ],
-    // O-shape
-    [
-        [1, 1],
-        [1, 1]
-    ],
-    // S-shape
-    [
-        [0, 1, 1],
-        [1, 1, 0],
-        [0, 0, 0]
-    ],
-    // T-shape
-    [
-        [0, 1, 0],
-        [1, 1, 1],
-        [0, 0, 0]
-    ],
-    // Z-shape
-    [
-        [1, 1, 0],
-        [0, 1, 1],
-        [0, 0, 0]
-    ]
+    [[0,0,0,0], [1,1,1,1], [0,0,0,0], [0,0,0,0]], // I
+    [[1,1], [1,1]], // O
+    [[0,1,0], [1,1,1], [0,0,0]], // T
+    [[0,1,1], [1,1,0], [0,0,0]], // S
+    [[1,1,0], [0,1,1], [0,0,0]], // Z
+    [[1,0,0], [1,1,1], [0,0,0]], // J
+    [[0,0,1], [1,1,1], [0,0,0]]  // L
 ];
 
-// Initialize the game
-function init() {
-    createGrid();
-    spawnShape();
-    gameInterval = setInterval(moveShapeDown, 500); // Moves down 2 cells every second
+const COLORS = ['cyan', 'yellow', 'purple', 'green', 'red', 'blue', 'orange'];
+
+let board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
+let currentPiece = null;
+let score = 0;
+let linesCleared = 0;  // New variable to track total lines cleared
+
+const SHAPE_BORDER_COLOR = 'white';
+const GRID_BORDER_COLOR = '#d0d0d0';
+
+let lockDelay = 200; // 0.2 seconds
+let lockTimer = 0;
+let isLocking = false;
+let flashCounter = 0;
+
+let completedRows = [];
+const ROW_CLEAR_DELAY = 200; // 500ms total delay before clearing rows
+const FLASH_COUNT = 5; // Number of times to flash
+let flashWhite = false; // New variable to track flash state
+
+const DIFFICULTY_LEVELS = {
+    EASY: { speed: 500, score_multiplier: 1 },
+    MEDIUM: { speed: 350, score_multiplier: 1.5 },
+    HARD: { speed: 150, score_multiplier: 2 }
+};
+
+let currentDifficulty = DIFFICULTY_LEVELS.EASY;
+let nextPiece = null;
+let heldPiece = null;
+let canHold = true;
+
+let startTime; // Add this near the top of your file with other variable declarations
+
+let gameMode = 'Classic';
+let isPaused = false;
+let lastTime = 0;
+
+// Add these near the top of your file with other variable declarations
+let level = 1;
+let combo = 0;
+let lastClearWasTetris = false;
+let lastMoveWasTSpin = false;
+
+const LEVEL_UP_LINES = 10;
+const BASE_SCORES = {
+    SINGLE: 100,
+    DOUBLE: 300,
+    TRIPLE: 500,
+    TETRIS: 800,
+    MINI_TSPIN: 100,
+    TSPIN: 400,
+    MINI_TSPIN_SINGLE: 200,
+    TSPIN_SINGLE: 800,
+    TSPIN_DOUBLE: 1200,
+    TSPIN_TRIPLE: 1600
+};
+
+let isSoftDropping = false;
+let isFastLeft = false;
+let isFastRight = false;
+
+let horizontalMoveCounter = 0;
+const initialMoveDelay = 150; // ms before starting fast move
+const fastMoveInterval = 50; // ms between moves during fast move
+
+function focusCanvas() {
+    canvas.focus();
 }
 
-// Create the playboard grid in the DOM
-function createGrid() {
-    for (let row = 0; row < ROWS; row++) {
-        for (let col = 0; col < COLS; col++) {
-            const cell = document.createElement('div');
-            playboard.appendChild(cell);
+// Modify the newPiece function
+function newPiece() {
+    if (!nextPiece) {
+        nextPiece = generatePiece();
+    }
+    const piece = nextPiece;
+    nextPiece = generatePiece();
+    return piece;
+}
+
+function generatePiece() {
+    const shapeIndex = Math.floor(Math.random() * SHAPES.length);
+    const shape = SHAPES[shapeIndex];
+    return {
+        shape: shape,
+        color: COLORS[shapeIndex],
+        x: Math.floor(COLS / 2) - Math.floor(shape[0].length / 2),
+        y: -shape.length,
+        shapeIndex: shapeIndex
+    };
+}
+
+function drawPieceInCanvas(piece, canvas) {
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    if (piece) {
+        const pieceSize = Math.floor(BLOCK_SIZE * 0.75); // 75% of the main grid block size
+        const maxPieceWidth = 4 * pieceSize;
+        const maxPieceHeight = 4 * pieceSize;
+        
+        // Calculate the actual piece dimensions
+        const pieceWidth = piece.shape[0].length * pieceSize;
+        const pieceHeight = piece.shape.length * pieceSize;
+        
+        // Center the piece both horizontally and vertically
+        const offsetX = Math.floor((canvas.width - pieceWidth) / 2);
+        const offsetY = Math.floor((canvas.height - pieceHeight) / 2);
+
+        piece.shape.forEach((row, y) => {
+            row.forEach((value, x) => {
+                if (value !== 0) {
+                    ctx.fillStyle = COLORS[piece.shapeIndex];
+                    ctx.fillRect(
+                        offsetX + x * pieceSize, 
+                        offsetY + y * pieceSize, 
+                        pieceSize, 
+                        pieceSize
+                    );
+                    ctx.strokeStyle = 'black';
+                    ctx.strokeRect(
+                        offsetX + x * pieceSize, 
+                        offsetY + y * pieceSize, 
+                        pieceSize, 
+                        pieceSize
+                    );
+                }
+            });
+        });
+    }
+}
+
+function drawNextPiece() {
+    drawPieceInCanvas(nextPiece, nextPieceCanvas);
+}
+
+function drawHeldPiece() {
+    drawPieceInCanvas(heldPiece, heldPieceCanvas);
+}
+
+function holdPiece() {
+    if (canHold) {
+        if (heldPiece === null) {
+            heldPiece = { ...currentPiece };
+            currentPiece = newPiece();
+        } else {
+            const temp = { ...currentPiece };
+            currentPiece = { ...heldPiece, x: Math.floor(COLS / 2) - Math.floor(heldPiece.shape[0].length / 2), y: -heldPiece.shape.length };
+            heldPiece = temp;
+        }
+        canHold = false;
+        drawHeldPiece();
+    }
+}
+
+function changeDifficulty(level) {
+    currentDifficulty = DIFFICULTY_LEVELS[level];
+    document.querySelectorAll('.difficultyButton').forEach(btn => {
+        btn.classList.toggle('selected', btn.dataset.difficulty === level);
+    });
+    focusCanvas();
+}
+
+function changeGameMode(mode) {
+    gameMode = mode;
+    document.querySelectorAll('.modeButton').forEach(btn => {
+        btn.classList.toggle('selected', btn.dataset.mode === mode);
+    });
+    // Implement game mode specific logic here
+    focusCanvas();
+}
+
+function togglePause() {
+    isPaused = !isPaused;
+    const pauseButton = document.getElementById('pauseButton');
+    pauseButton.textContent = isPaused ? 'Resume' : 'Pause';
+    pauseButton.classList.toggle('resume', isPaused);
+    
+    if (!isPaused) {
+        // Resume the game loop
+        lastTime = performance.now();
+        requestAnimationFrame(gameLoop);
+    }
+    focusCanvas();
+}
+
+function restartGame() {
+    initializeGame();
+    // No need to call focusCanvas() here as it's now part of initializeGame
+}
+
+function drawBoard() {
+    canvas.focus();
+    // Clear the entire canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw the gameplay grid background
+    ctx.fillStyle = '#ffffff';  // White background for the grid
+    ctx.fillRect(0, 0, GRID_WIDTH, GRID_HEIGHT);
+
+    // Draw grid cells
+    ctx.lineWidth = 1;
+    board.forEach((row, y) => {
+        row.forEach((value, x) => {
+            const drawX = x * BLOCK_SIZE;
+            const drawY = y * BLOCK_SIZE;
+
+            if (value === 'flash') {
+                if (flashWhite) {
+                    ctx.fillStyle = 'white';
+                } else {
+                    ctx.fillStyle = COLORS[board[y][x] - 1];
+                }
+                ctx.fillRect(drawX, drawY, BLOCK_SIZE, BLOCK_SIZE);
+            } else if (value !== 0) {
+                // Fill colored blocks
+                ctx.fillStyle = COLORS[value - 1];
+                ctx.fillRect(drawX, drawY, BLOCK_SIZE, BLOCK_SIZE);
+                
+                // Draw shape border
+                ctx.strokeStyle = SHAPE_BORDER_COLOR;
+                ctx.strokeRect(drawX, drawY, BLOCK_SIZE, BLOCK_SIZE);
+            } else {
+                // Draw grid border for empty cells
+                ctx.strokeStyle = GRID_BORDER_COLOR;
+                ctx.strokeRect(drawX, drawY, BLOCK_SIZE, BLOCK_SIZE);
+            }
+        });
+    });
+
+    // Draw the gameplay grid border
+    ctx.strokeStyle = 'gray';
+    ctx.lineWidth = GRID_BORDER_WIDTH;
+    
+    // Adjust the border drawing to ensure equal thickness
+    const offset = GRID_BORDER_WIDTH / 2;
+    ctx.strokeRect(
+        offset, 
+        offset, 
+        GRID_WIDTH - GRID_BORDER_WIDTH + offset * 2, 
+        GRID_HEIGHT - GRID_BORDER_WIDTH + offset * 2
+    );
+}
+
+function drawPiece() {
+    currentPiece.shape.forEach((row, y) => {
+        row.forEach((value, x) => {
+            if (value) {
+                const drawX = (currentPiece.x + x) * BLOCK_SIZE;
+                const drawY = (currentPiece.y + y) * BLOCK_SIZE;
+
+                // Only draw if the piece is within or entering the grid
+                if (drawY >= 0) {
+                    if (isLocking && Math.floor(flashCounter / 33) % 2 === 0) {
+                        ctx.fillStyle = 'white'; // Flash white
+                    } else {
+                        ctx.fillStyle = currentPiece.color;
+                    }
+                    ctx.fillRect(drawX, drawY, BLOCK_SIZE, BLOCK_SIZE);
+
+                    ctx.strokeStyle = SHAPE_BORDER_COLOR;
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(drawX, drawY, BLOCK_SIZE, BLOCK_SIZE);
+                }
+            }
+        });
+    });
+}
+
+function drawScore() {
+    const currentTime = new Date();
+    const elapsedTime = Math.floor((currentTime - startTime) / 1000); // Time in seconds
+    const minutes = Math.floor(elapsedTime / 60);
+    const seconds = elapsedTime % 60;
+
+    const infoContent = document.getElementById('infoContent');
+    infoContent.innerHTML = `
+        <p>Score: ${score}</p>
+        <p>Lines: ${linesCleared}</p>
+        <p>Level: ${level}</p>
+        <p>Time: ${minutes}:${seconds.toString().padStart(2, '0')}</p>
+    `;
+}
+
+function updateCanvas() {
+    drawBoard();
+    drawPiece();
+}
+
+function moveDown() {
+    currentPiece.y++;
+    if (collision()) {
+        currentPiece.y--;
+        if (!isLocking) {
+            isLocking = true;
+            lockTimer = 0;
+        }
+        return false; // Piece couldn't move down
+    } else {
+        isLocking = false;
+        lockTimer = 0;
+        if (isSoftDropping) {
+            score += 1; // Award 1 point for each row of soft drop
+        }
+        return true; // Piece moved down successfully
+    }
+}
+
+function moveLeft() {
+    currentPiece.x--;
+    if (collision()) {
+        currentPiece.x++;
+    }
+    updateCanvas();
+}
+
+function moveRight() {
+    currentPiece.x++;
+    if (collision()) {
+        currentPiece.x--;
+    }
+    updateCanvas();
+}
+
+function rotate() {
+    let rotated;
+    const pieceType = currentPiece.shapeIndex;
+
+    if (pieceType === 1) { // O piece
+        rotated = currentPiece.shape; // O piece doesn't rotate
+    } else if (pieceType === 0) { // I piece
+        rotated = rotateIPiece(currentPiece.shape);
+    } else if (pieceType === 2) { // T piece
+        rotated = rotateTpiece(currentPiece.shape);
+    } else {
+        rotated = rotatePiece(currentPiece.shape);
+    }
+
+    const prevShape = currentPiece.shape;
+    const prevX = currentPiece.x;
+    const prevY = currentPiece.y;
+
+    currentPiece.shape = rotated;
+
+    // Basic wall kick system
+    const kicks = [
+        [0, 0],   // No kick
+        [-1, 0],  // Left
+        [1, 0],   // Right
+        [0, -1],  // Up
+        [-1, -1], // Up-left
+        [1, -1],  // Up-right
+        [0, 1],   // Down
+        [-1, 1],  // Down-left
+        [1, 1]    // Down-right
+    ];
+
+    // Additional kicks for I shape
+    const iKicks = [
+        [-2, 0], [2, 0],  // Further left and right
+        [0, -2], [0, 2],  // Further up and down
+        [-3, 0], [3, 0],  // Even further left and right
+        [0, -3], [0, 3]   // Even further up and down
+    ];
+
+    const allKicks = currentPiece.shapeIndex === 0 ? [...kicks, ...iKicks] : kicks;
+
+    let kicked = false;
+    for (let [kickX, kickY] of allKicks) {
+        currentPiece.x += kickX;
+        currentPiece.y += kickY;
+        if (!collision()) {
+            kicked = true;
+            break;
+        }
+        currentPiece.x -= kickX;
+        currentPiece.y -= kickY;
+    }
+
+    if (kicked) {
+        lastMoveWasTSpin = checkTSpin();
+    }
+
+    if (!kicked) {
+        currentPiece.shape = prevShape;
+        currentPiece.x = prevX;
+        currentPiece.y = prevY;
+    }
+
+    updateCanvas();
+}
+
+function rotateIPiece(shape) {
+    // Four states of I piece
+    const states = [
+        [[0,0,0,0], [1,1,1,1], [0,0,0,0], [0,0,0,0]],
+        [[0,0,1,0], [0,0,1,0], [0,0,1,0], [0,0,1,0]],
+        [[0,0,0,0], [0,0,0,0], [1,1,1,1], [0,0,0,0]],
+        [[0,1,0,0], [0,1,0,0], [0,1,0,0], [0,1,0,0]]
+    ];
+    
+    // Find current state and return next state
+    for (let i = 0; i < states.length; i++) {
+        if (JSON.stringify(shape) === JSON.stringify(states[i])) {
+            return states[(i + 1) % states.length];
         }
     }
+    
+    // If not found (shouldn't happen), return original shape
+    return shape;
 }
 
-// Spawn a random Tetrimino shape
-function spawnShape() {
-    const randomShape = SHAPES[Math.floor(Math.random() * SHAPES.length)];
-    currentShape = {
-        shape: randomShape,
-        position: { x: Math.floor(COLS / 2) - Math.floor(randomShape[0].length / 2), y: 0 } // Spawn at the top
-    };
-    drawShape();
-}
-
-// Move the shape down
-function moveShapeDown() {
-    if (!canMoveDown()) {
-        lockShape();
-        spawnShape();
-        return;
+function rotateTpiece(shape) {
+    // Four states of T piece
+    const states = [
+        [[0,1,0], [1,1,1], [0,0,0]],
+        [[0,1,0], [0,1,1], [0,1,0]],
+        [[0,0,0], [1,1,1], [0,1,0]],
+        [[0,1,0], [1,1,0], [0,1,0]]
+    ];
+    
+    // Find current state and return next state
+    for (let i = 0; i < states.length; i++) {
+        if (JSON.stringify(shape) === JSON.stringify(states[i])) {
+            return states[(i + 1) % states.length];
+        }
     }
-    currentShape.position.y += 1;
-    drawShape();
+    
+    // If not found (shouldn't happen), return original shape
+    return shape;
 }
 
-// Check if shape can move down
-function canMoveDown() {
-    return currentShape.shape.every((row, y) => {
-        return row.every((cell, x) => {
-            if (cell === 1) {
-                const newX = currentShape.position.x + x;
-                const newY = currentShape.position.y + y + 1;
-                
-                // Check if out of bounds or blocked
-                if (newY >= ROWS || grid[newY][newX]) {
-                    return false;
-                }
+function rotatePiece(shape) {
+    // Standard rotation for other pieces
+    return shape[0].map((_, i) => shape.map(row => row[i]).reverse());
+}
+
+function collision() {
+    return currentPiece.shape.some((row, dy) => 
+        row.some((value, dx) => {
+            if (value) {
+                const newX = currentPiece.x + dx;
+                const newY = currentPiece.y + dy;
+                return newX < 0 || newX >= COLS || newY >= ROWS || (newY >= 0 && board[newY][newX]);
             }
-            return true;
-        });
-    });
-}
-
-function moveShape(direction) {
-    const newPosition = currentShape.position.x + direction;
-
-    // Check if the shape can move in the desired direction
-    if (canMove(newPosition)) {
-        currentShape.position.x = newPosition;
-        drawShape();
-    }
-}
-
-function canMove(newPosition) {
-    return currentShape.shape.every((row, y) => {
-        return row.every((cell, x) => {
-            if (cell === 1) {
-                const newX = newPosition + x;
-                const newY = currentShape.position.y + y;
-
-                // Check if the new position is within the grid bounds and not blocked
-                if (newX < 0 || newX >= COLS || grid[newY] && grid[newY][newX]) {
-                    return false;
-                }
-            }
-            return true;
-        });
-    });
-}
-
-function rotateShape() {
-    const newShape = currentShape.shape[0].map((val, index) =>
-        currentShape.shape.map(row => row[index]).reverse()
+            return false;
+        })
     );
+}
 
-    // Check if the rotated shape will fit inside the grid
-    if (canRotate(newShape)) {
-        currentShape.shape = newShape;
-        drawShape();
+function merge() {
+    console.log("Merging piece:", JSON.stringify(currentPiece));
+    currentPiece.shape.forEach((row, y) => {
+        row.forEach((value, x) => {
+            if (value) {
+                const boardY = currentPiece.y + y;
+                const boardX = currentPiece.x + x;
+                if (boardY >= 0 && boardY < ROWS && boardX >= 0 && boardX < COLS) {
+                    board[boardY][boardX] = currentPiece.shapeIndex + 1;
+                    console.log(`Merged at: (${boardX}, ${boardY}), value: ${currentPiece.shapeIndex + 1}`);
+                } else {
+                    console.warn(`Attempted to merge outside board: (${boardX}, ${boardY})`);
+                }
+            }
+        });
+    });
+    console.log("Board state after merge:", JSON.stringify(board));
+
+    removeRows();  // This will now set up the delayed row removal
+    
+    // Reset canHold flag
+    canHold = true;
+    
+    // Generate new piece
+    currentPiece = newPiece();
+}
+
+function removeRows() {
+    completedRows = [];
+    for (let y = 0; y <= ROWS - 1; y++) {
+        if (board[y].every(cell => cell !== 0)) {
+            completedRows.push(y);
+        }
+    }
+    console.log("+++Completed rows: " + JSON.stringify(completedRows));
+    if (completedRows.length > 0) {
+        flashCompletedRows(0);
     }
 }
 
-function canRotate(newShape) {
-    return newShape.every((row, y) => {
-        return row.every((cell, x) => {
-            if (cell === 1) {
-                const newX = currentShape.position.x + x;
-                const newY = currentShape.position.y + y;
-
-                // Check if the new shape is within bounds and not colliding
-                if (newX < 0 || newX >= COLS || newY >= ROWS || (grid[newY] && grid[newY][newX])) {
-                    return false;
-                }
-            }
-            return true;
-        });
-    });
-}
-
-// Lock the shape in place and reset for the next shape
-function lockShape() {
-    currentShape.shape.forEach((row, y) => {
-        row.forEach((cell, x) => {
-            if (cell === 1) {
-                const posX = currentShape.position.x + x;
-                const posY = currentShape.position.y + y;
-                if (posY >= 0) {
-                    grid[posY][posX] = 1; // Mark the grid as occupied with locked cells
+function flashCompletedRows(currentFlash) {
+    if (currentFlash < FLASH_COUNT) {
+        completedRows.forEach(y => {
+            for (let x = 0; x < COLS; x++) {
+                if (board[y][x] !== 0) {
+                    board[y][x] = 'flash';
                 }
             }
         });
-    });
-    checkForClearRows(); // Check if any rows should be cleared
-    drawLockedShapes(); // Ensure locked shapes are drawn after locking
-    spawnShape(); // Spawn the next shape
+        updateCanvas();
+        
+        flashWhite = !flashWhite; // Toggle flash state
+        
+        setTimeout(() => {
+            flashCompletedRows(currentFlash + 1);
+        }, ROW_CLEAR_DELAY / (FLASH_COUNT * 2));
+    } else {
+        clearCompletedRows();
+    }
 }
 
+function clearCompletedRows() {
+    const rowsCleared = completedRows.length;
+    let scoreIncrease = 0;
 
+    // Determine if the last move was a T-Spin
+    const isTSpin = checkTSpin();
 
-// Check for any filled rows and clear them
-function checkForClearRows() {
-    // This will be implemented to clear full rows
-}
-
-// Draw the shape on the grid
-function drawShape() {
-    clearGrid(); // Clear the grid first
-
-    // Draw locked shapes
-    drawLockedShapes();
-
-    // Draw current moving shape
-    currentShape.shape.forEach((row, y) => {
-        row.forEach((cell, x) => {
-            if (cell === 1) {
-                const posX = currentShape.position.x + x;
-                const posY = currentShape.position.y + y;
-
-                if (posY >= 0) { // Don't draw outside the visible grid
-                    const cellDiv = playboard.children[posY * COLS + posX];
-                    cellDiv.style.backgroundColor = 'blue'; // Color for falling shape
-                }
+    // Calculate score based on lines cleared and T-Spin
+    if (rowsCleared > 0) {
+        if (isTSpin) {
+            switch (rowsCleared) {
+                case 1:
+                    scoreIncrease = lastMoveWasTSpin ? BASE_SCORES.TSPIN_SINGLE : BASE_SCORES.MINI_TSPIN_SINGLE;
+                    break;
+                case 2:
+                    scoreIncrease = BASE_SCORES.TSPIN_DOUBLE;
+                    break;
+                case 3:
+                    scoreIncrease = BASE_SCORES.TSPIN_TRIPLE;
+                    break;
             }
-        });
-    });
-}
-
-
-function drawLockedShapes() {
-    grid.forEach((row, y) => {
-        row.forEach((cell, x) => {
-            if (cell === 1) { // Only draw locked cells
-                const cellDiv = playboard.children[y * COLS + x];
-                cellDiv.style.backgroundColor = 'gray'; // Locked shape color
+        } else {
+            switch (rowsCleared) {
+                case 1:
+                    scoreIncrease = BASE_SCORES.SINGLE;
+                    break;
+                case 2:
+                    scoreIncrease = BASE_SCORES.DOUBLE;
+                    break;
+                case 3:
+                    scoreIncrease = BASE_SCORES.TRIPLE;
+                    break;
+                case 4:
+                    scoreIncrease = BASE_SCORES.TETRIS;
+                    break;
             }
-        });
+        }
+
+        // Apply back-to-back bonus
+        if ((rowsCleared === 4 || isTSpin) && lastClearWasTetris) {
+            scoreIncrease *= 1.5;
+        }
+
+        // Apply combo bonus
+        if (combo > 0) {
+            scoreIncrease += 50 * combo * level;
+        }
+
+        // Apply level multiplier
+        scoreIncrease *= level;
+
+        // Update score and lines cleared
+        score += Math.floor(scoreIncrease);
+        linesCleared += rowsCleared;
+
+        // Update combo
+        combo++;
+
+        // Check for level up
+        if (linesCleared >= level * LEVEL_UP_LINES) {
+            levelUp();
+        }
+
+        // Update lastClearWasTetris
+        lastClearWasTetris = (rowsCleared === 4 || isTSpin);
+    } else {
+        // Reset combo if no lines were cleared
+        combo = 0;
+    }
+
+    // Clear the rows and update the board
+    completedRows.forEach(y => {
+        board.splice(y, 1);
+        board.unshift(Array(COLS).fill(0));
     });
+
+    // Reset completedRows
+    completedRows = [];
+
+    // Update display
+    drawScore();
+    updateCanvas();
 }
 
-
-// Clear the grid for redrawing
-function clearGrid() {
-    const cells = playboard.querySelectorAll('div');
-    cells.forEach(cell => {
-        cell.style.backgroundColor = 'transparent'; // Clear only the visual grid
+function checkTSpin() {
+    // This is a simplified T-Spin detection.
+    // A full implementation would be more complex.
+    if (currentPiece.shapeIndex !== 2) return false; // Not a T piece
+    
+    let cornersFilled = 0;
+    const corners = [
+        [-1, -1], [1, -1], [-1, 1], [1, 1]
+    ];
+    
+    corners.forEach(([dx, dy]) => {
+        const newX = currentPiece.x + dx;
+        const newY = currentPiece.y + dy;
+        if (newX < 0 || newX >= COLS || newY >= ROWS || (newY >= 0 && board[newY][newX])) {
+            cornersFilled++;
+        }
     });
+    
+    return cornersFilled >= 3;
 }
 
-
-// Show game over popup (not used yet)
-function showGameOverPopup() {
-    gameOverPopup.style.visibility = 'visible';
+function levelUp() {
+    level++;
+    // Increase game speed
+    currentDifficulty.speed = Math.max(currentDifficulty.speed - 50, 100);
 }
 
-// Handle retry button click (not used yet)
-retryButton.addEventListener('click', () => {
-    gameOverPopup.style.visibility = 'hidden';
-    resetGame();
-});
+let dropCounter = 0;
 
-// Reset the game
-function resetGame() {
-    grid = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
-    clearGrid();
-    isGameOver = false;
-    spawnShape();
-    gameInterval = setInterval(moveShapeDown, 500);
+function hardDrop() {
+    let rowsDropped = 0;
+    while (!collision()) {
+        currentPiece.y++;
+        rowsDropped++;
+    }
+    currentPiece.y--; // Move back up one row to the last valid position
+    score += rowsDropped * 2; // Award 2 points per row for hard drop
+    
+    // Instead of calling merge() directly, set up the piece for immediate locking
+    isLocking = true;
+    lockTimer = lockDelay; // Set to lockDelay to trigger immediate locking in the next update
+    
+    updateCanvas(); // Immediately update the canvas to show the new position
 }
 
-// Keydown event listener for arrow keys and space bar
-document.addEventListener('keydown', (event) => {
-    if (event.key === 'ArrowLeft') {
-        moveShape(-1); // Move left
-    } else if (event.key === 'ArrowRight') {
-        moveShape(1); // Move right
-    } else if (event.key === 'ArrowDown') {
-        moveShapeDown(); // Move down faster
-    } else if (event.key === ' ') {
-        rotateShape(); // Rotate the shape
+function update(deltaTime) {
+    if (isPaused) return;
+
+    // Handle horizontal movement
+    horizontalMoveCounter += deltaTime;
+    if (isFastLeft || isFastRight) {
+        if (horizontalMoveCounter > initialMoveDelay) {
+            if (horizontalMoveCounter > fastMoveInterval) {
+                if (isFastLeft) moveLeft();
+                if (isFastRight) moveRight();
+                horizontalMoveCounter = initialMoveDelay; // Reset to just after initial delay
+            }
+        }
+    } else {
+        horizontalMoveCounter = 0;
+    }
+
+    // Handle vertical movement (soft drop and normal drop)
+    dropCounter += deltaTime;
+    if (dropCounter > (isSoftDropping ? currentDifficulty.speed / 20 : currentDifficulty.speed)) {
+        moveDown();
+        dropCounter = 0;
+    }
+
+    if (isLocking) {
+        lockTimer += deltaTime;
+        flashCounter += deltaTime;
+        if (lockTimer >= lockDelay) {
+            if (currentPiece.y < 0) {
+                console.log("Game over condition met");
+                alert(`Game Over! Your score: ${score}\nLines cleared: ${linesCleared}`);
+                initializeGame(); // Reset the game, including the elapsed time
+            } else {
+                merge();
+            }
+            isLocking = false;
+            lockTimer = 0;
+            flashCounter = 0;
+        }
+    }
+
+    updateCanvas();
+    drawScore();
+    drawNextPiece();
+    drawHeldPiece();
+}
+
+function draw() {
+    updateCanvas();
+    drawScore();
+    drawNextPiece();
+    drawHeldPiece();
+}
+
+function gameLoop(currentTime) {
+    if (isPaused) return;
+
+    const deltaTime = currentTime - lastTime;
+    lastTime = currentTime;
+
+    update(deltaTime);
+    draw();
+
+    requestAnimationFrame(gameLoop);
+}
+
+document.addEventListener('keydown', event => {
+    if (isPaused) return;
+
+    switch(event.key) {
+        case 'ArrowLeft':
+            moveLeft();
+            isFastLeft = true;
+            horizontalMoveCounter = 0;
+            break;
+        case 'ArrowRight':
+            moveRight();
+            isFastRight = true;
+            horizontalMoveCounter = 0;
+            break;
+        case 'ArrowDown': 
+            isSoftDropping = true;
+            break;
+        case 'ArrowUp': rotate(); break;
+        case ' ': hardDrop(); break;
+        case 'c':
+        case 'C':
+            holdPiece();
+            break;
+        case '1':
+            changeDifficulty('EASY');
+            break;
+        case '2':
+            changeDifficulty('MEDIUM');
+            break;
+        case '3':
+            changeDifficulty('HARD');
+            break;
     }
 });
 
+// Update the keyup event listener
+document.addEventListener('keyup', event => {
+    switch(event.key) {
+        case 'ArrowDown':
+            isSoftDropping = false;
+            break;
+        case 'ArrowLeft':
+            isFastLeft = false;
+            break;
+        case 'ArrowRight':
+            isFastRight = false;
+            break;
+    }
+});
 
-init();
+// Debug function to log the current state
+function logState() {
+    console.log("Current Piece:", currentPiece);
+    console.log("Board State:", board);
+}
+
+// Add a debug key (e.g., 'D' key)
+document.addEventListener('keydown', event => {
+    if (event.key === 'd' || event.key === 'D') {
+        logState();
+    }
+});
+
+// Modify the game initialization
+function initializeGame() {
+    board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
+    score = 0;
+    linesCleared = 0;
+    currentPiece = newPiece();
+    nextPiece = generatePiece();
+    canHold = true;
+    heldPiece = null;
+    startTime = new Date(); // Reset the start time
+    isPaused = false;
+    document.getElementById('pauseButton').textContent = 'Pause';
+    document.getElementById('pauseButton').classList.remove('resume');
+    changeGameMode('Classic');
+    changeDifficulty('EASY');
+    lastTime = performance.now();
+    requestAnimationFrame(gameLoop);
+    
+    // Focus the canvas after initialization
+    focusCanvas();
+}
+
+// Event listeners for new buttons
+document.querySelectorAll('.modeButton').forEach(btn => {
+    btn.addEventListener('click', () => {
+        changeGameMode(btn.dataset.mode);
+        focusCanvas();
+    });
+});
+
+document.querySelectorAll('.difficultyButton').forEach(btn => {
+    btn.addEventListener('click', () => {
+        changeDifficulty(btn.dataset.difficulty);
+        focusCanvas();
+    });
+});
+
+document.getElementById('pauseButton').addEventListener('click', () => {
+    togglePause();
+    focusCanvas();
+});
+
+document.getElementById('restartButton').addEventListener('click', () => {
+    restartGame();
+    focusCanvas();
+});
+
+// When the window loads, initialize the game
+window.addEventListener('load', initializeGame);
+
+// Replace the current game initialization at the bottom of the file with:
+initializeGame();

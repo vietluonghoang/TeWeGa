@@ -10,7 +10,11 @@ body {
 
 #gameContainer {
     display: flex;
-    align-items: flex-start;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
 }
 
 #tetrisCanvas {
@@ -111,11 +115,11 @@ button {
     position: relative;
     border: 2px solid #000;
     background-color: #fff;
-    padding: 25px 10px 0px; /* Increased top padding for label */
+    padding: 25px 10px 10px;
     box-sizing: border-box;
     margin-bottom: 20px;
-    width: 100%; /* Ensure it takes full width of its parent */
-    height: auto; /* Allow height to adjust based on content */
+    width: 100%;
+    height: auto;
 }
 
 .pieceLabel {
@@ -130,3 +134,75 @@ button {
     margin: 0 auto; /* Center the canvas horizontally */
     max-width: 100%; /* Ensure it doesn't overflow the container */
 }
+
+#topPanel {
+    width: 100%;
+    padding: 15px;
+    background-color: #f0f0f0;
+    border-bottom: 1px solid #ccc;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#topPanel h2 {
+    margin: 0;
+    flex-basis: 100%;
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+#topPanel .frame {
+    flex: 1;
+    margin: 0 10px;
+    min-width: 200px;
+}
+
+#topPanel h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
+#controls, #gameModes, #difficulties {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: nowrap; /* Prevent wrapping */
+    overflow-x: auto; /* Allow horizontal scrolling if needed */
+}
+
+#controls button, #gameModes button, #difficulties button {
+    padding: 5px 10px;
+    cursor: pointer;
+    white-space: nowrap; /* Prevent button text from wrapping */
+}
+
+#gameArea {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    margin-top: 20px;
+}
+
+#leftSidePanel, #sidePanel {
+    display: flex;
+    flex-direction: column;
+    width: 150px;
+    margin: 0 20px;
+}
+
+#leftSidePanel {
+    margin-right: 20px;
+}
+
+#sidePanel {
+    margin-left: 20px;
+}
+
+/* Ensure the canvas maintains its size */
+#tetrisCanvas {
+    /* Add any specific styles for the canvas if needed */
+}
+
+/* Add any additional styles for the existing elements as needed */
