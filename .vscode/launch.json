@@ -8,7 +8,8 @@
             "type": "chrome",
             "request": "launch",
             "name": "Launch Chrome against localhost",
-            "url": "file:///Users/vietcat/Desktop/Workshop/TeWeGa/index.html",
+            // "url": "file:///Users/vietcat/Desktop/Workshop/TeWeGa/index.html",
+            "url": "file:///Users/vietlh/Desktop/workshop/Games/TeWeGa/index.html",
             "webRoot": "${workspaceFolder}"
         }
     ]
