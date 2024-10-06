@@ -113,19 +113,50 @@ function newPiece() {
     }
     const piece = nextPiece;
     nextPiece = generatePiece();
+    
+    // Perform obstruction check here, just before the piece is placed on the board
+    piece.y = calculateInitialY(piece.shape);
+    if (isObstructed(piece.shape, piece.x, piece.y)) {
+        piece.y--;
+    }
+    
     return piece;
 }
 
 function generatePiece() {
     const shapeIndex = Math.floor(Math.random() * SHAPES.length);
     const shape = SHAPES[shapeIndex];
+    
     return {
         shape: shape,
         color: COLORS[shapeIndex],
         x: Math.floor(COLS / 2) - Math.floor(shape[0].length / 2),
-        y: -shape.length,
+        y: null,  // We'll set this in newPiece() function
         shapeIndex: shapeIndex
     };
+}
+
+function calculateInitialY(shape) {
+    // Find the bottom-most non-empty row of the piece
+    let actualBottom = shape.length - 1;
+    while (actualBottom >= 0 && !shape[actualBottom].some(cell => cell !== 0)) {
+        actualBottom--;
+    }
+    
+    return 1 - actualBottom;
+}
+
+function isObstructed(shape, x, y) {
+    return shape.some((row, dy) => 
+        row.some((value, dx) => {
+            if (value !== 0) {
+                const newY = y + dy;
+                const newX = x + dx;
+                return newY >= 0 && newY < ROWS && newX >= 0 && newX < COLS && board[newY][newX] !== 0;
+            }
+            return false;
+        })
+    );
 }
 
 function drawPieceInCanvas(piece, canvas) {
