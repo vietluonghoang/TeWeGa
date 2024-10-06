@@ -541,9 +541,40 @@ function merge() {
     
     // Reset canHold flag
     canHold = true;
-    
     // Generate new piece
     currentPiece = newPiece();
+    // Check for game over after generating the new piece
+    if (isGameOver()) {
+        endGame();
+    }
+}
+
+function isGameOver() {
+    // Check if any cell in the top row is filled
+    if (board[0].some(cell => cell !== 0)) {
+        return true;
+    }
+    
+    // Check if a new piece would immediately collide in the top row
+    const newPiece = generatePiece();
+    newPiece.y = calculateInitialY(newPiece.shape);
+    return newPiece.shape.some((row, y) => 
+        row.some((value, x) => {
+            if (value !== 0) {
+                const newY = newPiece.y + y;
+                const newX = newPiece.x + x;
+                return newY === 0 && board[newY][newX] !== 0;
+            }
+            return false;
+        })
+    );
+}
+
+// Add this new function to handle game over
+function endGame() {
+    console.log("Game over condition met");
+    alert(`Game Over! Your score: ${score}\nLines cleared: ${linesCleared}`);
+    initializeGame(); // Reset the game, including the elapsed time
 }
 
 function removeRows() {
@@ -743,13 +774,7 @@ function update(deltaTime) {
         lockTimer += deltaTime;
         flashCounter += deltaTime;
         if (lockTimer >= lockDelay) {
-            if (currentPiece.y < 0) {
-                console.log("Game over condition met");
-                alert(`Game Over! Your score: ${score}\nLines cleared: ${linesCleared}`);
-                initializeGame(); // Reset the game, including the elapsed time
-            } else {
-                merge();
-            }
+            merge(); // This now includes the game over check
             isLocking = false;
             lockTimer = 0;
             flashCounter = 0;
